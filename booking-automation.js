@@ -116,7 +116,7 @@ function habitarSaveAppointment(appointment) {
 function habitarConfirmationHtml(booking) {
   const message = habitarAppointmentWhatsappMessage(booking);
   return `
-    <section class="success-panel">
+    <section class="success-panel" data-booking-auto-confirmation="true">
       <p class="script">Agendamento confirmado</p>
       <h1>Horário reservado com sucesso</h1>
       <p>Seu agendamento foi confirmado automaticamente. Em caso de necessidade de reagendamento, fale com a Joelma pelo WhatsApp.</p>
@@ -137,18 +137,17 @@ function habitarRenderAutoConfirmation() {
   const app = document.querySelector("#app");
   const booking = habitarReadJson(window.HABITAR_LAST_BOOKING_KEY, null);
   if (!app || !booking) return false;
+  if (app.querySelector('[data-booking-auto-confirmation="true"]')) return true;
   app.innerHTML = habitarConfirmationHtml(booking);
   return true;
 }
 
-// Sobrescreve a confirmação padrão para ler o último agendamento salvo.
 window.renderConfirmation = function renderConfirmation() {
   const booking = habitarReadJson(window.HABITAR_LAST_BOOKING_KEY, null);
   if (!booking && typeof window.renderBooking === "function") return window.renderBooking();
   return habitarConfirmationHtml(booking);
 };
 
-// Captura o envio do agendamento antes do handler original e transforma o app em secretária automática.
 document.addEventListener("submit", (event) => {
   const form = event.target;
   if (!(form instanceof HTMLFormElement) || form.id !== "bookingForm") return;
