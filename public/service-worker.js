@@ -1,4 +1,4 @@
-const CACHE_NAME = "attual-one-pwa-v1";
+const CACHE_NAME = "habitar-o-corpo-pwa-v3";
 const APP_SHELL = [
   "/",
   "/manifest.json",
@@ -8,6 +8,7 @@ const APP_SHELL = [
   "/icons/icon-512-maskable.png",
   "/icons/favicon.png",
   "/icons/apple-touch-icon.png",
+  "/assets/hero-joelma.jpg",
 ];
 
 self.addEventListener("install", (event) => {
