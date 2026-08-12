@@ -53,7 +53,7 @@ const initialServices = [
   },
   {
     id: "curso-vip-massagem-integrativa-tantrica",
-    name: "Curso VIP — Massagem Integrativa Tântrica",
+    name: "Curso VIP — Massagem Integrativa Tântrica Quatro Elementos",
     duration: APP_CONFIG.defaultDuration,
     price: APP_CONFIG.defaultPrice,
     description: "Experiência individual de aprendizado com orientação personalizada, ética e linguagem profissional.",
@@ -74,14 +74,6 @@ const initialServices = [
     price: APP_CONFIG.defaultPrice,
     description: "Vivência reservada para autoconhecimento, presença e consciência corporal, conduzida com respeito e ética.",
     benefits: ["Autoconhecimento", "Presença", "Cuidado reservado"],
-  },
-  {
-    id: "massagem-pedras-quentes",
-    name: "Massagem Relaxante com Pedras Quentes",
-    duration: APP_CONFIG.defaultDuration,
-    price: APP_CONFIG.defaultPrice,
-    description: "Massagem relaxante com pedras aquecidas para conforto, descanso e bem-estar corporal.",
-    benefits: ["Relaxamento", "Conforto térmico", "Alívio de tensões"],
   },
   {
     id: "vivencia-massagem-nuru",
@@ -352,7 +344,8 @@ const localDataStore = {
 };
 
 function seedData() {
-  if (!localStorage.getItem("services")) store.write("services", initialServices);
+  const currentServices = store.read("services", initialServices);
+  store.write("services", currentServices.filter((service) => service.id !== "massagem-pedras-quentes"));
   migrateClients();
   migrateAppointments();
   migrateVipContents();
