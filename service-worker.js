@@ -1,4 +1,4 @@
-const CACHE_NAME = "habitar-o-corpo-pwa-v1";
+const CACHE_NAME = "habitar-o-corpo-pwa-v2";
 const APP_SHELL = [
   "./",
   "./index.html",
@@ -11,6 +11,7 @@ const APP_SHELL = [
   "./icons/icon-512-maskable.png",
   "./icons/favicon.png",
   "./icons/apple-touch-icon.png",
+  "./assets/hero-joelma.jpg",
 ];
 
 self.addEventListener("install", (event) => {
