@@ -63,6 +63,26 @@ function validUuid(value: unknown) {
   return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(String(value ?? ""));
 }
 
+function validNotificationToken(value: unknown) {
+  return /^[0-9a-f]{64}$/i.test(String(value ?? ""));
+}
+
+function formatDuration(minutes: number) {
+  if (minutes <= 0) return "";
+  const hours = Math.floor(minutes / 60);
+  const rest = minutes % 60;
+  if (!hours) return `${rest}min`;
+  if (!rest) return `${hours}h`;
+  return `${hours}h${String(rest).padStart(2, "0")}`;
+}
+
+function formatPrice(priceCents: number) {
+  return new Intl.NumberFormat("pt-BR", {
+    style: "currency",
+    currency: "BRL",
+  }).format(priceCents / 100);
+}
+
 async function authenticatedUser(req: Request) {
   const authorization = req.headers.get("authorization") ?? "";
   const token = authorization.replace(/^Bearer\s+/i, "").trim();
@@ -152,7 +172,43 @@ function publicBooking(item: Record<string, unknown>) {
   };
 }
 
+function publicService(item: Record<string, unknown>) {
+  const durationMinutes = Number(item.duration_minutes ?? 0);
+  const priceCents = Number(item.price_cents ?? 0);
+  return {
+    id: item.id,
+    name: item.name,
+    duration: formatDuration(durationMinutes),
+    durationMinutes,
+    price: formatPrice(priceCents),
+    priceCents,
+    description: item.description ?? "",
+    benefits: Array.isArray(item.benefits) ? item.benefits : [],
+    active: item.active !== false,
+    sortOrder: Number(item.sort_order ?? 0),
+  };
+}
+
+function publicVipContent(item: Record<string, unknown>) {
+  return {
+    id: item.id,
+    title: item.title,
+    description: item.description ?? "",
+    type: item.content_type,
+    category: item.category,
+    url: item.media_url ?? "",
+    textContent: item.text_content ?? "",
+    thumbnail: item.thumbnail_url ?? "",
+    date: String(item.created_at ?? "").slice(0, 10),
+    status: item.status,
+    access: item.access_level,
+    sortOrder: Number(item.sort_order ?? 0),
+  };
+}
+
 const BOOKING_COLUMNS = "id,customer_user_id,service_id,service_name,customer_name,customer_phone,customer_email,local_date,local_time,starts_at,ends_at,notes,status,origin,notification_status,calendar_event_id,created_at";
+const SERVICE_COLUMNS = "id,name,duration_minutes,price_cents,active,description,benefits,sort_order,created_at,updated_at";
+const VIP_COLUMNS = "id,title,description,content_type,category,media_url,text_content,thumbnail_url,status,access_level,sort_order,created_at,updated_at";
 
 async function availability(url: URL, origin: string | null) {
   const date = url.searchParams.get("date") ?? "";
@@ -173,6 +229,35 @@ async function availability(url: URL, origin: string | null) {
   }, 200, origin);
 }
 
+async function catalog(origin: string | null) {
+  const { data, error } = await supabase
+    .from("joelma_services")
+    .select(SERVICE_COLUMNS)
+    .eq("active", true)
+    .order("sort_order", { ascending: true })
+    .order("name", { ascending: true });
+  if (error) {
+    console.error("catalog_error", error.code);
+    return json({ ok: false, error: "falha_ao_carregar_servicos" }, 500, origin);
+  }
+  return json({ ok: true, services: (data ?? []).map(publicService) }, 200, origin);
+}
+
+async function publicConfig(origin: string | null) {
+  const { data, error } = await supabase.rpc("joelma_public_config");
+  if (error || !data) {
+    console.error("public_config_error", error?.code ?? "empty");
+    return json({ ok: false, error: "falha_ao_carregar_configuracao" }, 500, origin);
+  }
+  return json({
+    ok: true,
+    pix: {
+      type: cleanText((data as Record<string, unknown>).pixType, 20),
+      key: cleanText((data as Record<string, unknown>).pixKey, 120),
+    },
+  }, 200, origin);
+}
+
 async function booking(payload: Record<string, unknown>, origin: string | null, req: Request) {
   const user = await authenticatedUser(req);
   if (!user?.email) {
@@ -181,6 +266,7 @@ async function booking(payload: Record<string, unknown>, origin: string | null, 
 
   let profile: Record<string, unknown>;
   try {
+    profile = syncProfile(user) as unknown as Record<string, unknown>;
     profile = await syncProfile(user) as Record<string, unknown>;
   } catch (error) {
     console.error("booking_profile_error", error instanceof Error ? error.message : "unknown");
@@ -230,13 +316,9 @@ async function booking(payload: Record<string, unknown>, origin: string | null, 
     p_origin: "App Habitar o Corpo",
   });
   if (error) {
-    const unavailable = error.code === "23P01" ||
-      String(error.message).includes("horario_indisponivel");
+    const unavailable = error.code === "23P01" || String(error.message).includes("horario_indisponivel");
     console.error("booking_rpc_error", error.code);
-    return json({
-      ok: false,
-      error: unavailable ? "horario_indisponivel" : "falha_ao_agendar",
-    }, unavailable ? 409 : 500, origin);
+    return json({ ok: false, error: unavailable ? "horario_indisponivel" : "falha_ao_agendar" }, unavailable ? 409 : 500, origin);
   }
 
   const bookingId = String(data.bookingId);
@@ -319,22 +401,47 @@ async function updateProfile(payload: Record<string, unknown>, req: Request, ori
   return json({ ok: true, profile: publicProfile(data) }, 200, origin);
 }
 
+async function vipContent(req: Request, origin: string | null) {
+  const user = await authenticatedUser(req);
+  if (!user?.email) return json({ ok: false, error: "nao_autenticado" }, 401, origin);
+  const profile = await syncProfile(user) as Record<string, unknown>;
+  const admin = await isAdminEmail(user.email);
+  if (profile.active === false) return json({ ok: false, error: "conta_inativa" }, 403, origin);
+  if (profile.is_vip !== true && !admin) return json({ ok: false, error: "acesso_vip_necessario" }, 403, origin);
+
+  const { data, error } = await supabase
+    .from("joelma_vip_contents")
+    .select(VIP_COLUMNS)
+    .eq("status", "active")
+    .order("sort_order", { ascending: true })
+    .order("created_at", { ascending: false });
+  if (error) {
+    console.error("vip_content_error", error.code);
+    return json({ ok: false, error: "falha_ao_carregar_conteudo" }, 500, origin);
+  }
+  return json({ ok: true, contents: (data ?? []).map(publicVipContent) }, 200, origin);
+}
+
 async function adminData(req: Request, origin: string | null) {
   const user = await authenticatedUser(req);
   if (!user?.email) return json({ ok: false, error: "nao_autenticado" }, 401, origin);
   if (!(await isAdminEmail(user.email))) return json({ ok: false, error: "acesso_negado" }, 403, origin);
-  const [bookingsResult, profilesResult] = await Promise.all([
+  const [bookingsResult, profilesResult, servicesResult, vipResult] = await Promise.all([
     supabase.from("joelma_bookings").select(BOOKING_COLUMNS).order("starts_at", { ascending: false }),
     supabase.from("joelma_profiles").select("user_id,email,full_name,phone,city,is_vip,active,accepted_terms_at,created_at,updated_at").order("created_at", { ascending: false }),
+    supabase.from("joelma_services").select(SERVICE_COLUMNS).order("sort_order", { ascending: true }).order("name", { ascending: true }),
+    supabase.from("joelma_vip_contents").select(VIP_COLUMNS).order("sort_order", { ascending: true }).order("created_at", { ascending: false }),
   ]);
-  if (bookingsResult.error || profilesResult.error) {
-    console.error("admin_data_error", bookingsResult.error?.code ?? profilesResult.error?.code);
+  if (bookingsResult.error || profilesResult.error || servicesResult.error || vipResult.error) {
+    console.error("admin_data_error", bookingsResult.error?.code ?? profilesResult.error?.code ?? servicesResult.error?.code ?? vipResult.error?.code);
     return json({ ok: false, error: "falha_ao_carregar_painel" }, 500, origin);
   }
   return json({
     ok: true,
     bookings: (bookingsResult.data ?? []).map(publicBooking),
     clients: (profilesResult.data ?? []).map(publicProfile),
+    services: (servicesResult.data ?? []).map(publicService),
+    vipContents: (vipResult.data ?? []).map(publicVipContent),
   }, 200, origin);
 }
 
@@ -345,13 +452,8 @@ async function updateBookingStatus(payload: Record<string, unknown>, req: Reques
   const bookingId = cleanText(payload.bookingId, 36);
   const status = cleanText(payload.status, 30);
   const allowed = new Set(["confirmed", "completed", "canceled", "no_show"]);
-  if (!validUuid(bookingId) || !allowed.has(status)) {
-    return json({ ok: false, error: "dados_invalidos" }, 400, origin);
-  }
-  const { error } = await supabase
-    .from("joelma_bookings")
-    .update({ status, updated_at: new Date().toISOString() })
-    .eq("id", bookingId);
+  if (!validUuid(bookingId) || !allowed.has(status)) return json({ ok: false, error: "dados_invalidos" }, 400, origin);
+  const { error } = await supabase.from("joelma_bookings").update({ status, updated_at: new Date().toISOString() }).eq("id", bookingId);
   if (error) return json({ ok: false, error: "falha_ao_atualizar_agendamento" }, 500, origin);
   return json({ ok: true }, 200, origin);
 }
@@ -361,30 +463,102 @@ async function setClientVip(payload: Record<string, unknown>, req: Request, orig
   if (!user?.email) return json({ ok: false, error: "nao_autenticado" }, 401, origin);
   if (!(await isAdminEmail(user.email))) return json({ ok: false, error: "acesso_negado" }, 403, origin);
   const userId = cleanText(payload.userId, 36);
-  if (!validUuid(userId) || typeof payload.isVip !== "boolean") {
+  if (!validUuid(userId) || typeof payload.isVip !== "boolean") return json({ ok: false, error: "dados_invalidos" }, 400, origin);
+  const { error } = await supabase.from("joelma_profiles").update({ is_vip: payload.isVip, updated_at: new Date().toISOString() }).eq("user_id", userId);
+  if (error) return json({ ok: false, error: "falha_ao_atualizar_cliente" }, 500, origin);
+  return json({ ok: true }, 200, origin);
+}
+
+async function upsertService(payload: Record<string, unknown>, req: Request, origin: string | null) {
+  const user = await authenticatedUser(req);
+  if (!user?.email) return json({ ok: false, error: "nao_autenticado" }, 401, origin);
+  if (!(await isAdminEmail(user.email))) return json({ ok: false, error: "acesso_negado" }, 403, origin);
+
+  const id = cleanText(payload.id, 100);
+  const name = cleanText(payload.name, 160);
+  const description = cleanText(payload.description, 1200);
+  const durationMinutes = Number(payload.durationMinutes);
+  const priceCents = Number(payload.priceCents);
+  const sortOrder = Number(payload.sortOrder ?? 0);
+  const active = payload.active !== false;
+  const benefits = Array.isArray(payload.benefits)
+    ? payload.benefits.slice(0, 8).map((item) => cleanText(item, 120)).filter(Boolean)
+    : [];
+
+  if (!/^[a-z0-9-]{3,100}$/.test(id) || name.length < 2 || !Number.isInteger(durationMinutes) || durationMinutes < 30 || durationMinutes > 480 || !Number.isInteger(priceCents) || priceCents < 0 || priceCents > 100000000 || !Number.isInteger(sortOrder)) {
     return json({ ok: false, error: "dados_invalidos" }, 400, origin);
   }
-  const { error } = await supabase
-    .from("joelma_profiles")
-    .update({ is_vip: payload.isVip, updated_at: new Date().toISOString() })
-    .eq("user_id", userId);
-  if (error) return json({ ok: false, error: "falha_ao_atualizar_cliente" }, 500, origin);
+
+  const { data, error } = await supabase
+    .from("joelma_services")
+    .upsert({ id, name, description, duration_minutes: durationMinutes, price_cents: priceCents, benefits, active, sort_order: sortOrder, updated_at: new Date().toISOString() }, { onConflict: "id" })
+    .select(SERVICE_COLUMNS)
+    .single();
+  if (error) return json({ ok: false, error: "falha_ao_salvar_servico" }, 500, origin);
+  return json({ ok: true, service: publicService(data) }, 200, origin);
+}
+
+async function upsertVipContent(payload: Record<string, unknown>, req: Request, origin: string | null) {
+  const user = await authenticatedUser(req);
+  if (!user?.email) return json({ ok: false, error: "nao_autenticado" }, 401, origin);
+  if (!(await isAdminEmail(user.email))) return json({ ok: false, error: "acesso_negado" }, 403, origin);
+
+  const id = cleanText(payload.id, 36);
+  const title = cleanText(payload.title, 180);
+  const description = cleanText(payload.description, 1200);
+  const contentType = cleanText(payload.type ?? payload.contentType, 20);
+  const category = cleanText(payload.category, 80) || "Conteúdo";
+  const mediaUrl = cleanText(payload.url ?? payload.mediaUrl, 1000);
+  const textContent = cleanText(payload.textContent, 12000);
+  const thumbnailUrl = cleanText(payload.thumbnail ?? payload.thumbnailUrl, 1000);
+  const status = cleanText(payload.status, 20) || "draft";
+  const sortOrder = Number(payload.sortOrder ?? 0);
+  const allowedTypes = new Set(["video", "photo", "text", "pdf", "link"]);
+  const allowedStatus = new Set(["draft", "active", "archived"]);
+
+  if ((id && !validUuid(id)) || title.length < 2 || !allowedTypes.has(contentType) || !allowedStatus.has(status) || !Number.isInteger(sortOrder)) {
+    return json({ ok: false, error: "dados_invalidos" }, 400, origin);
+  }
+
+  const record = {
+    title,
+    description,
+    content_type: contentType,
+    category,
+    media_url: mediaUrl,
+    text_content: textContent,
+    thumbnail_url: thumbnailUrl,
+    status,
+    access_level: "VIP",
+    sort_order: sortOrder,
+    updated_at: new Date().toISOString(),
+  };
+
+  const query = id
+    ? supabase.from("joelma_vip_contents").update(record).eq("id", id)
+    : supabase.from("joelma_vip_contents").insert(record);
+  const { data, error } = await query.select(VIP_COLUMNS).single();
+  if (error) return json({ ok: false, error: "falha_ao_salvar_conteudo" }, 500, origin);
+  return json({ ok: true, content: publicVipContent(data) }, 200, origin);
+}
+
+async function archiveVipContent(payload: Record<string, unknown>, req: Request, origin: string | null) {
+  const user = await authenticatedUser(req);
+  if (!user?.email) return json({ ok: false, error: "nao_autenticado" }, 401, origin);
+  if (!(await isAdminEmail(user.email))) return json({ ok: false, error: "acesso_negado" }, 403, origin);
+  const id = cleanText(payload.id, 36);
+  if (!validUuid(id)) return json({ ok: false, error: "dados_invalidos" }, 400, origin);
+  const { error } = await supabase.from("joelma_vip_contents").update({ status: "archived", updated_at: new Date().toISOString() }).eq("id", id);
+  if (error) return json({ ok: false, error: "falha_ao_arquivar_conteudo" }, 500, origin);
   return json({ ok: true }, 200, origin);
 }
 
 async function notification(payload: Record<string, unknown>) {
   const bookingId = cleanText(payload.bookingId, 36);
   const notificationToken = cleanText(payload.notificationToken, 64);
-  if (!/^[0-9a-f-]{36}$/i.test(bookingId) || !/^[0-9a-f]{64}$/i.test(notificationToken)) {
-    return json({ ok: false, error: "token_invalido" }, 403);
-  }
-  const { data, error } = await supabase.rpc("joelma_get_notification", {
-    p_booking_id: bookingId,
-    p_notification_token: notificationToken,
-  });
-  if (error || !data) {
-    return json({ ok: false, error: "reserva_nao_encontrada" }, 404);
-  }
+  if (!validUuid(bookingId) || !validNotificationToken(notificationToken)) return json({ ok: false, error: "token_invalido" }, 403);
+  const { data, error } = await supabase.rpc("joelma_get_notification", { p_booking_id: bookingId, p_notification_token: notificationToken });
+  if (error || !data) return json({ ok: false, error: "reserva_nao_encontrada" }, 404);
   return json({ ok: true, booking: data });
 }
 
@@ -392,9 +566,7 @@ async function notificationResult(payload: Record<string, unknown>) {
   const bookingId = cleanText(payload.bookingId, 36);
   const notificationToken = cleanText(payload.notificationToken, 64);
   const success = payload.success === true;
-  if (!/^[0-9a-f-]{36}$/i.test(bookingId) || !/^[0-9a-f]{64}$/i.test(notificationToken)) {
-    return json({ ok: false, error: "token_invalido" }, 403);
-  }
+  if (!validUuid(bookingId) || !validNotificationToken(notificationToken)) return json({ ok: false, error: "token_invalido" }, 403);
   const { data, error } = await supabase.rpc("joelma_mark_notification", {
     p_booking_id: bookingId,
     p_notification_token: notificationToken,
@@ -402,7 +574,24 @@ async function notificationResult(payload: Record<string, unknown>) {
     p_provider_id: cleanText(payload.providerId, 200) || null,
     p_error: cleanText(payload.error, 500) || null,
   });
+  if (error || data !== true) return json({ ok: false, error: "reserva_nao_encontrada" }, 404);
+  return json({ ok: true });
+}
+
+async function calendarEventResult(payload: Record<string, unknown>) {
+  const bookingId = cleanText(payload.bookingId, 36);
+  const notificationToken = cleanText(payload.notificationToken, 64);
+  const calendarEventId = cleanText(payload.calendarEventId, 255);
+  if (!validUuid(bookingId) || !validNotificationToken(notificationToken) || calendarEventId.length < 3) {
+    return json({ ok: false, error: "token_ou_evento_invalido" }, 403);
+  }
+  const { data, error } = await supabase.rpc("joelma_mark_calendar_event", {
+    p_booking_id: bookingId,
+    p_notification_token: notificationToken,
+    p_calendar_event_id: calendarEventId,
+  });
   if (error || data !== true) {
+    console.error("calendar_event_result_error", error?.code ?? "not_updated");
     return json({ ok: false, error: "reserva_nao_encontrada" }, 404);
   }
   return json({ ok: true });
@@ -410,25 +599,17 @@ async function notificationResult(payload: Record<string, unknown>) {
 
 Deno.serve(async (req: Request) => {
   const origin = req.headers.get("origin");
-  if (req.method === "OPTIONS") {
-    return new Response(null, { status: 204, headers: cors(origin) });
-  }
-  if (!isBrowserOriginAllowed(origin)) {
-    return json({ ok: false, error: "origem_nao_permitida" }, 403, origin);
-  }
+  if (req.method === "OPTIONS") return new Response(null, { status: 204, headers: cors(origin) });
+  if (!isBrowserOriginAllowed(origin)) return json({ ok: false, error: "origem_nao_permitida" }, 403, origin);
 
   const url = new URL(req.url);
-  if (req.method === "GET" && url.searchParams.has("date")) {
-    return availability(url, origin);
-  }
-  if (req.method !== "POST") {
-    return json({ ok: false, error: "metodo_nao_permitido" }, 405, origin);
-  }
+  if (req.method === "GET" && url.searchParams.has("date")) return availability(url, origin);
+  if (req.method === "GET" && url.searchParams.get("action") === "catalog") return catalog(origin);
+  if (req.method === "GET" && url.searchParams.get("action") === "public-config") return publicConfig(origin);
+  if (req.method !== "POST") return json({ ok: false, error: "metodo_nao_permitido" }, 405, origin);
 
   const length = Number(req.headers.get("content-length") || "0");
-  if (length > 16_384) {
-    return json({ ok: false, error: "payload_muito_grande" }, 413, origin);
-  }
+  if (length > 16_384) return json({ ok: false, error: "payload_muito_grande" }, 413, origin);
 
   let payload: Record<string, unknown>;
   try {
@@ -441,10 +622,15 @@ Deno.serve(async (req: Request) => {
   if (action === "book") return booking(payload, origin, req);
   if (action === "account-data") return accountData(req, origin);
   if (action === "update-profile") return updateProfile(payload, req, origin);
+  if (action === "vip-content") return vipContent(req, origin);
   if (action === "admin-data") return adminData(req, origin);
   if (action === "update-booking-status") return updateBookingStatus(payload, req, origin);
   if (action === "set-client-vip") return setClientVip(payload, req, origin);
+  if (action === "upsert-service") return upsertService(payload, req, origin);
+  if (action === "upsert-vip-content") return upsertVipContent(payload, req, origin);
+  if (action === "archive-vip-content") return archiveVipContent(payload, req, origin);
   if (action === "notification") return notification(payload);
   if (action === "notification-result") return notificationResult(payload);
+  if (action === "calendar-event-result") return calendarEventResult(payload);
   return json({ ok: false, error: "acao_invalida" }, 400, origin);
 });
