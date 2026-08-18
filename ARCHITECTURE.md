@@ -1,62 +1,41 @@
-# Architecture
+# Arquitetura — Habitar o Corpo
 
-## Objetivo
+## Visão geral
 
-Este documento descreve a fundacao tecnica do projeto ATTUAL ONE e as regras de organizacao para evolucao futura.
+O projeto usa uma arquitetura deliberadamente simples para reduzir dependências e evitar duplicação de código.
 
-O projeto usa Next.js 15, TypeScript, Tailwind CSS, Supabase, PWA, ESLint e Prettier. A base atual nao implementa funcionalidades, telas, autenticacao ou banco de dados.
+### Frontend
 
-## Principios
+A aplicação é uma PWA estática. A única fonte do frontend é a pasta `public/`.
 
-- Separar responsabilidades por camada.
-- Manter regras de negocio fora do framework.
-- Evitar acoplamento direto entre features e infraestrutura.
-- Preferir modulos pequenos, explicitos e testaveis.
-- Documentar decisoes relevantes antes de expandir a base.
+Arquivos principais:
 
-## Estrutura
+- `public/index.html`: shell da aplicação, navegação, gate 18+ e entrada do frontend.
+- `public/app.js`: regras de interface, autenticação, conta, agendamento, VIP e painel administrativo.
+- `public/styles.css`: identidade visual e responsividade.
+- `public/manifest.json`: metadados da PWA.
+- `public/service-worker.js`: cache do app shell.
 
-```text
-src/
-  app/
-  components/
-  features/
-  lib/
-  hooks/
-  services/
-  types/
-  styles/
-  utils/
-```
+O build não transpila nem gera uma segunda aplicação. Ele valida os arquivos e copia `public/` para `dist/`, que é o diretório publicado pela Vercel.
 
-## Camadas
+### Backend
 
-`src/app` concentra a entrada do Next.js App Router: layouts, metadados e rotas.
+O backend operacional fica no Supabase:
 
-`src/components` concentra componentes reutilizaveis sem regra de negocio.
+- Supabase Auth para cadastro, login, confirmação e recuperação de senha.
+- `joelma-auth` para ações complementares de autenticação e telemetria mínima.
+- `joelma-booking` para catálogo, disponibilidade, conta, administração e confirmação de agendamentos.
+- PostgreSQL para clientes, serviços, horários, agendamentos, conteúdos VIP e eventos mínimos de uso.
 
-`src/features` sera o ponto principal para funcionalidades futuras, organizadas por dominio.
+### Automação
 
-`src/lib` concentra adaptadores de infraestrutura, SDKs e clientes externos.
+Após um agendamento confirmado, a automação externa em n8n cuida das integrações operacionais, incluindo WhatsApp e Google Calendar.
 
-`src/hooks` concentra hooks compartilhados e genericos.
+## Regras de manutenção
 
-`src/services` concentra orquestracao de casos de uso e servicos de aplicacao.
-
-`src/types` concentra contratos TypeScript transversais.
-
-`src/styles` concentra estilos globais e configuracao visual base.
-
-`src/utils` concentra funcoes puras e utilitarios sem dependencia de framework.
-
-## Regras De Evolucao
-
-- Toda nova feature deve ter fronteira clara dentro de `src/features`.
-- Acesso a servicos externos deve passar por adaptadores em `src/lib` ou `src/services`.
-- Componentes compartilhados nao devem depender de regras especificas de negocio.
-- Tipos devem permanecer proximos do dominio que os utiliza.
-- Documentos em `docs/` devem ser atualizados junto com mudancas relevantes.
-
-## Estado Atual
-
-A arquitetura esta preparada, mas sem funcionalidades implementadas. Supabase e PWA estao apenas configurados como fundacao tecnica.
+- Não manter cópias duplicadas do frontend fora de `public/`.
+- Não adicionar frameworks de frontend sem necessidade comprovada.
+- Toda alteração de produção deve passar por `npm run verify`.
+- Mudanças devem ser testadas em preview antes de chegar à branch principal.
+- Segredos nunca entram no repositório.
+- Dados pessoais e sensíveis devem ter acesso mínimo necessário.

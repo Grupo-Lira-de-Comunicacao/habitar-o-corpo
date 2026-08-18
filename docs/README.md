@@ -1,5 +1,8 @@
-# docs
+# Documentação
 
-Central de documentacao do projeto.
+Documentação ativa do projeto Habitar o Corpo.
 
-Esta pasta organiza materiais de produto, banco, API, negocio, UX e branding. Ela deve evoluir junto com o projeto, antes ou durante mudancas relevantes de escopo.
+- `AUTH_V2.md`: cadastro, login, recuperação de senha e regras de segurança da autenticação atual.
+- `../ARCHITECTURE.md`: arquitetura de produção e regras de manutenção.
+
+Detalhes de banco e backend ficam versionados diretamente em `supabase/migrations/` e `supabase/functions/` para evitar documentação duplicada e desatualizada.

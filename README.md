@@ -1,33 +1,33 @@
-# ATTUAL ONE Foundation
+# Habitar o Corpo — Joelma Souza
 
-Fundacao profissional em Next.js 15, TypeScript, Tailwind CSS, Supabase, PWA, ESLint e Prettier.
+Aplicação/PWA de Joelma Souza para apresentação de serviços, cadastro seguro, autenticação, agendamentos, área VIP e administração.
 
-Este repositorio contem somente a base tecnica do projeto. Nao ha telas, banco, autenticacao ou funcionalidades de produto implementadas.
+## Produção
 
-## Scripts
+- Domínio: `https://app.joelmasouzaoficial.com.br`
+- Frontend: PWA estática publicada pela Vercel.
+- Backend: Supabase Auth, banco e Edge Functions.
+- Automação: n8n para WhatsApp e Google Calendar.
+
+## Estrutura atual
+
+- `public/`: única fonte do frontend publicado (`index.html`, `app.js`, `styles.css`, manifesto, service worker, ícones e imagens).
+- `supabase/functions/`: Edge Functions `joelma-auth` e `joelma-booking`.
+- `supabase/migrations/`: migrations do projeto.
+- `docs/`: documentação operacional atual.
+- `scripts/verify-joelma-production.mjs`: valida os invariantes necessários antes de cada build.
+
+## Build
 
 ```bash
-npm run dev
 npm run build
-npm run lint
-npm run type-check
-npm run format
 ```
 
-## Arquitetura
+O build primeiro executa as verificações de produção e depois copia `public/` para `dist/`. A Vercel publica somente `dist/`.
 
-- `src/app`: entrada do Next.js App Router.
-- `src/components`: componentes reutilizaveis sem regra de negocio.
-- `src/features`: modulos verticais de funcionalidades futuras.
-- `src/lib`: clientes e adaptadores de infraestrutura.
-- `src/hooks`: hooks compartilhados.
-- `src/services`: servicos de aplicacao e orquestracao.
-- `src/types`: contratos TypeScript globais.
-- `src/styles`: estilos globais e Tailwind.
-- `src/utils`: utilitarios puros e genericos.
+## Segurança
 
-## Ambiente
-
-Copie `.env.example` para `.env.local` quando for configurar integrações reais.
-
-As variaveis do Supabase estao apenas preparadas para uso futuro. Nenhum banco ou autenticacao foi criado.
+- Senhas ficam no Supabase Auth e não devem ser gravadas no repositório nem em `localStorage`.
+- Segredos, tokens e credenciais nunca devem ser commitados.
+- A chave pública do Supabase usada pelo navegador é uma chave publicável; operações sensíveis permanecem protegidas no backend.
+- Dados pessoais devem seguir coleta mínima e as regras de privacidade/LGPD descritas no aplicativo.

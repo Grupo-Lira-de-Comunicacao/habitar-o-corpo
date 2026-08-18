@@ -95,6 +95,7 @@ if (syntax.status !== 0) {
 
 function scanTextFiles(dir, findings = []) {
   if (!fs.existsSync(dir)) return findings;
+  const legacyBrand = ['ATTUAL', 'ONE'].join(' ');
   for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
     if (['.git', 'node_modules', 'dist'].includes(entry.name)) continue;
     const full = path.join(dir, entry.name);
@@ -104,12 +105,12 @@ function scanTextFiles(dir, findings = []) {
     }
     if (!/\.(?:md|json|js|mjs|ts|html|css|sql)$/i.test(entry.name)) continue;
     const text = read(full);
-    if (/ATTUAL ONE/i.test(text)) findings.push(full);
+    if (text.toUpperCase().includes(legacyBrand)) findings.push(full);
   }
   return findings;
 }
 
-const attualOneFiles = scanTextFiles('.');
-assert(attualOneFiles.length === 0, `Referências ATTUAL ONE ainda presentes: ${attualOneFiles.join(', ')}`);
+const staleBrandFiles = scanTextFiles('.');
+assert(staleBrandFiles.length === 0, `Referências de marca legada ainda presentes: ${staleBrandFiles.join(', ')}`);
 
 console.log('Habitar o Corpo cleanup invariants: OK');

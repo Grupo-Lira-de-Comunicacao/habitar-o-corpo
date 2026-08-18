@@ -1,33 +1,9 @@
 {
-  "name": "attual-one-platform",
-  "version": "0.1.0",
+  "name": "habitar-o-corpo",
+  "version": "1.0.0",
   "private": true,
   "scripts": {
-    "dev": "next dev",
-    "build": "node scripts/run-joelma-production-patch.mjs && node scripts/verify-joelma-production.mjs && next build",
-    "start": "next start",
-    "lint": "eslint . --max-warnings=0",
-    "type-check": "tsc --noEmit",
-    "format": "prettier --write .",
-    "format:check": "prettier --check ."
-  },
-  "dependencies": {
-    "@supabase/supabase-js": "^2.45.4",
-    "next": "^15.0.0",
-    "react": "^19.0.0",
-    "react-dom": "^19.0.0"
-  },
-  "devDependencies": {
-    "@types/node": "^22.7.4",
-    "@types/react": "^19.0.0",
-    "@types/react-dom": "^19.0.0",
-    "autoprefixer": "^10.4.20",
-    "eslint": "^8.57.1",
-    "eslint-config-next": "^15.0.0",
-    "eslint-config-prettier": "^9.1.0",
-    "postcss": "^8.4.47",
-    "prettier": "^3.3.3",
-    "tailwindcss": "^3.4.13",
-    "typescript": "^5.6.2"
+    "verify": "node scripts/verify-joelma-production.mjs",
+    "build": "npm run verify && node -e \"const fs=require('node:fs');fs.rmSync('dist',{recursive:true,force:true});fs.cpSync('public','dist',{recursive:true});\""
   }
 }
