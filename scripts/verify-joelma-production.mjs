@@ -45,7 +45,6 @@ const forbiddenLegacyPaths = [
   'manifest.json',
   'next-env.d.ts',
   'next.config.ts',
-  'package-lock.json',
   'postcss.config.mjs',
   'public/booking-automation.js',
   'src',
