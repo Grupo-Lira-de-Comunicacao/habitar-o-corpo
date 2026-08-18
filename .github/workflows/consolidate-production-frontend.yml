@@ -1,0 +1,44 @@
+name: Consolidar frontend de producao
+
+on:
+  push:
+    branches:
+      - codex/joelma-cleanup-audit
+
+permissions:
+  contents: write
+
+jobs:
+  consolidate:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Recuperar patch de producao atual
+        run: |
+          git fetch origin main --depth=1
+          git show origin/main:scripts/joelma-production-patch.mjs > scripts/joelma-production-patch.mjs
+          git show origin/main:scripts/run-joelma-production-patch.mjs > scripts/run-joelma-production-patch.mjs
+          cp public/app.js app.js
+
+      - name: Aplicar patch e validar
+        run: |
+          node scripts/run-joelma-production-patch.mjs
+          rm -f app.js scripts/joelma-production-patch.mjs scripts/run-joelma-production-patch.mjs
+          node scripts/verify-joelma-production.mjs
+
+      - name: Versionar resultado consolidado
+        run: |
+          if git diff --quiet -- public/app.js; then
+            echo "Nenhuma alteracao a consolidar."
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add public/app.js
+          git commit -m "refactor: consolidar frontend final de producao [skip ci]"
+          git push origin HEAD:codex/joelma-cleanup-audit
