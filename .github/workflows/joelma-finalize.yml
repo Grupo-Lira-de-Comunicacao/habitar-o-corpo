@@ -6,6 +6,7 @@ on:
       - codex/joelma-auth-v2
     paths:
       - .github/workflows/joelma-finalize.yml
+  workflow_dispatch:
 
 permissions:
   contents: write
@@ -95,7 +96,12 @@ jobs:
               req=urllib.request.Request(
                   endpoint,
                   data=json.dumps({'query': sql, 'read_only': read_only}).encode(),
-                  headers={'Authorization': f'Bearer {token}', 'Content-Type': 'application/json'},
+                  headers={
+                      'Authorization': f'Bearer {token}',
+                      'Content-Type': 'application/json',
+                      'Accept': 'application/json',
+                      'User-Agent': 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36',
+                  },
                   method='POST',
               )
               try:
