@@ -7,7 +7,7 @@ const APP_CONFIG = {
   concept: "Habitar o Corpo",
   phrase: "Habitar o corpo é voltar para si.",
   whatsapp: "5512988830247",
-  pixKey: "11987080279",
+  pixKey: "",
   adminEmail: "joelmaespacosama@gmail.com",
   address: "Rua Fabiola Regina Sardinha, 47 - Res. Armando Moreira Righi, São José dos Campos - SP, CEP: 12247-812",
   defaultDuration: "1h30",
@@ -143,47 +143,7 @@ const initialAppointments = [];
 
 const initialClients = [];
 
-const initialVipContents = [
-  {
-    id: "boas-vindas",
-    title: "Boas-vindas da Joelma",
-    description: "Mensagem reservada para clientes VIP com orientações iniciais.",
-    type: "video",
-    category: "Orientações",
-    url: "https://www.youtube.com/watch?v=dQw4w9WgXcQ",
-    textContent: "",
-    thumbnail: "https://images.unsplash.com/photo-1596178060810-72f53ce9a65c?auto=format&fit=crop&w=800&q=80",
-    date: "2026-07-05",
-    status: "active",
-    access: "VIP",
-  },
-  {
-    id: "ambiente-preparado",
-    title: "Ambiente preparado",
-    description: "Registro do espaço terapêutico reservado para atendimentos.",
-    type: "photo",
-    category: "Espaço",
-    url: "https://images.unsplash.com/photo-1515377905703-c4788e51af15?auto=format&fit=crop&w=1200&q=80",
-    textContent: "",
-    thumbnail: "https://images.unsplash.com/photo-1515377905703-c4788e51af15?auto=format&fit=crop&w=800&q=80",
-    date: "2026-07-05",
-    status: "active",
-    access: "VIP",
-  },
-  {
-    id: "texto-vip-demo",
-    title: "Ritual de presença",
-    description: "Texto reservado para leitura antes do atendimento.",
-    type: "text",
-    category: "Leitura",
-    url: "",
-    textContent: "Respire com calma. Observe o corpo sem pressa. Habitar o corpo é voltar para si, reconhecendo limites, presença e cuidado.",
-    thumbnail: "",
-    date: "2026-07-07",
-    status: "active",
-    access: "VIP",
-  },
-];
+const initialVipContents = [];
 
 const initialAdmins = [];
 
@@ -289,18 +249,19 @@ const localDataStore = {
 };
 
 function seedData() {
-  if (!localStorage.getItem("services")) store.write("services", initialServices);
-  migrateVipContents();
+  localStorage.removeItem("services");
+  localStorage.removeItem(VIP_CONTENTS_STORAGE_KEY);
+  localStorage.removeItem("vipContents");
   [CLIENTS_STORAGE_KEY, APPOINTMENTS_STORAGE_KEY, SESSION_STORAGE_KEY, "admins", "clientSession", "vipUsers"].forEach((key) => localStorage.removeItem(key));
   LEGACY_CLIENT_KEYS.forEach((key) => localStorage.removeItem(key));
   state.client = null;
 }
 
 function resetDemoData() {
-  store.write("services", initialServices);
-  localDataStore.saveAppointments(initialAppointments);
-  localDataStore.saveVipContents(initialVipContents);
-  localDataStore.saveClients(initialClients);
+  localStorage.removeItem("services");
+  localDataStore.saveAppointments([]);
+  localDataStore.saveVipContents([]);
+  localDataStore.saveClients([]);
   localStorage.removeItem("vipUsers");
   LEGACY_CLIENT_KEYS.forEach((key) => localStorage.removeItem(key));
   store.write("admins", initialAdmins);
@@ -310,7 +271,7 @@ function resetDemoData() {
 }
 
 function getServices() {
-  return store.read("services", []);
+  return state.services || [];
 }
 
 function getAppointments() {
@@ -318,7 +279,7 @@ function getAppointments() {
 }
 
 function getVipContents() {
-  return localDataStore.getVipContents();
+  return state.vipContents || [];
 }
 
 function getClients() {
@@ -400,9 +361,7 @@ function migrateAppointments() {
 }
 
 function migrateVipContents() {
-  if (localStorage.getItem(VIP_CONTENTS_STORAGE_KEY) !== null) return;
-  const legacyContents = store.read("vipContents", []);
-  localDataStore.saveVipContents(legacyContents.length ? legacyContents : initialVipContents);
+  localStorage.removeItem(VIP_CONTENTS_STORAGE_KEY);
   localStorage.removeItem("vipContents");
 }
 
@@ -450,6 +409,72 @@ async function apiRequest(action, payload = {}) {
   return result;
 }
 
+async function apiGet(action) {
+  const response = await fetch(`${BOOKING_API_URL}?action=${encodeURIComponent(action)}`, {
+    headers: { Accept: "application/json" },
+  });
+  const result = await response.json().catch(() => ({ ok: false, error: "resposta_invalida" }));
+  if (!response.ok || result.ok !== true) throw new Error(result.error || "request_failed");
+  return result;
+}
+
+async function loadCatalog() {
+  const result = await apiGet("catalog");
+  state.services = Array.isArray(result.services) ? result.services : [];
+  return state.services;
+}
+
+async function loadPublicConfig() {
+  const result = await apiGet("public-config");
+  APP_CONFIG.pixKey = String(result.pix?.key || "");
+  APP_CONFIG.pixType = String(result.pix?.type || "CPF");
+  return result;
+}
+
+async function loadVipContents() {
+  if (!state.authSession?.access_token) {
+    state.vipContents = [];
+    return [];
+  }
+  try {
+    const result = await apiRequest("vip-content");
+    state.vipContents = Array.isArray(result.contents) ? result.contents : [];
+  } catch (error) {
+    if (error?.status !== 403) console.warn("vip_content_unavailable");
+    state.vipContents = [];
+  }
+  return state.vipContents;
+}
+
+function durationToMinutes(value) {
+  const text = String(value || "").trim().toLowerCase();
+  if (/^\d+$/.test(text)) return Number(text);
+  const hourMatch = text.match(/(\d+)\s*h/);
+  const minuteMatch = text.match(/h\s*(\d+)/) || text.match(/(\d+)\s*min/);
+  const hours = hourMatch ? Number(hourMatch[1]) : 0;
+  const minutes = minuteMatch ? Number(minuteMatch[1]) : 0;
+  return hours * 60 + minutes || 90;
+}
+
+function priceToCents(value) {
+  const text = String(value || "").trim();
+  if (!text || /consulta/i.test(text)) return 0;
+  const normalized = text.replace(/[^0-9,.-]/g, "").replace(/\./g, "").replace(",", ".");
+  const amount = Number(normalized);
+  return Number.isFinite(amount) && amount >= 0 ? Math.round(amount * 100) : 0;
+}
+
+async function refreshAdminContent() {
+  if (!state.admin) return;
+  const dashboard = await apiRequest("admin-data");
+  state.adminAppointments = dashboard.bookings || [];
+  state.adminClients = dashboard.clients || [];
+  state.adminServices = dashboard.services || [];
+  state.adminVipContents = dashboard.vipContents || [];
+  state.services = state.adminServices.filter((service) => service.active !== false);
+  if (state.client?.isVip || state.admin) await loadVipContents();
+}
+
 async function authApiRequest(action, payload = {}, { authenticated = false } = {}) {
   const headers = { "Content-Type": "application/json", Accept: "application/json" };
   if (authenticated && state.authSession?.access_token) headers.Authorization = `Bearer ${state.authSession.access_token}`;
@@ -483,6 +508,9 @@ async function loadAccount(session, { renderAfter = true } = {}) {
   state.accountAppointments = [];
   state.adminAppointments = [];
   state.adminClients = [];
+  state.adminServices = [];
+  state.adminVipContents = [];
+  state.vipContents = [];
   if (session?.access_token) {
     const account = await apiRequest("account-data");
     state.client = account.profile;
@@ -492,7 +520,11 @@ async function loadAccount(session, { renderAfter = true } = {}) {
       const dashboard = await apiRequest("admin-data");
       state.adminAppointments = dashboard.bookings || [];
       state.adminClients = dashboard.clients || [];
+      state.adminServices = dashboard.services || [];
+      state.adminVipContents = dashboard.vipContents || [];
+      state.services = state.adminServices.filter((service) => service.active !== false);
     }
+    if (state.client?.isVip || account.isAdmin) await loadVipContents();
   }
   state.authReady = true;
   const nextRoute = new URLSearchParams(location.search).get("next");
@@ -505,6 +537,7 @@ async function loadAccount(session, { renderAfter = true } = {}) {
 
 async function initializeAuth() {
   try {
+    await Promise.allSettled([loadCatalog(), loadPublicConfig()]);
     const { data, error } = await authClient.auth.getSession();
     if (error) throw error;
     await loadAccount(data.session, { renderAfter: false });
@@ -684,7 +717,7 @@ function isYoutubeOrVimeo(url) {
 function isUrlCompatibleWithType(type, url) {
   if (type === "text") return true;
   if (type === "video") return isYoutubeOrVimeo(url) || hasExtension(url, [".mp4"]);
-  if (type === "image" || type === "photo") return hasExtension(url, [".jpg", ".jpeg", ".png", ".webp"]);
+  if (type === "photo") return hasExtension(url, [".jpg", ".jpeg", ".png", ".webp"]);
   if (type === "pdf") return hasExtension(url, [".pdf"]);
   if (type === "audio") return hasExtension(url, [".mp3", ".wav", ".ogg"]);
   if (type === "link") return true;
@@ -694,7 +727,7 @@ function isUrlCompatibleWithType(type, url) {
 function getUrlValidationMessage(type) {
   const messages = {
     video: "Use um link do YouTube, youtu.be, Vimeo ou uma URL direta .mp4.",
-    image: "Use uma URL de imagem .jpg, .jpeg, .png ou .webp.",
+    photo: "Use uma URL de imagem .jpg, .jpeg, .png ou .webp.",
     pdf: "Use uma URL de arquivo PDF.",
     audio: "Use uma URL direta de áudio .mp3, .wav ou .ogg.",
     link: "Informe uma URL válida para o conteúdo externo.",
@@ -703,7 +736,7 @@ function getUrlValidationMessage(type) {
 }
 
 function getActiveVipContents() {
-  return getVipContents().filter((content) => content.status !== "inactive");
+  return getVipContents().filter((content) => content.status === "active");
 }
 
 function waLink(message) {
@@ -837,7 +870,7 @@ function renderHome() {
         <p class="eyebrow">Contato e atendimento</p>
         <h2>Espaço Joelma Souza</h2>
         <p>${APP_CONFIG.address}</p>
-        <p>Pix provisório: <strong>${APP_CONFIG.pixKey}</strong></p>
+        <p>Pix: <strong>${APP_CONFIG.pixKey}</strong></p>
       </div>
       <div class="hours-grid">
         ${businessHours.map(([day, hours]) => `<span>${day}</span><strong>${hours}</strong>`).join("")}
@@ -1055,6 +1088,7 @@ function renderClientSignup() {
           <input name="acceptedTerms" type="checkbox" />
           <span>Li e aceito os Termos de Uso e a Política de Privacidade.</span>
         </label>
+        <button class="ghost-btn" type="button" data-route="privacidade">Ler Política de Privacidade</button>
         <button class="gold-btn" type="submit">Criar conta</button>
         <button class="ghost-btn" type="button" data-route="entrar">Já tenho conta</button>
         <p class="form-message" id="clientSignupMessage"></p>
@@ -1121,7 +1155,7 @@ function renderConfirmation() {
       <p class="script">Agendamento confirmado</p>
       <h1>Seu horário está reservado</h1>
       <p>A confirmação foi registrada automaticamente. A Joelma receberá a notificação do agendamento.</p>
-      <p class="pix-line">Pix provisório para pagamento/sinal: <strong>${APP_CONFIG.pixKey}</strong></p>
+      <p class="pix-line">Pix para pagamento/sinal: <strong>${APP_CONFIG.pixKey}</strong></p>
       <div class="summary-box">
         <strong>${booking.serviceName}</strong>
         <span>${formatDate(booking.date)} às ${booking.time}</span>
@@ -1184,7 +1218,7 @@ function renderVipContent() {
           </button>
         `,
         )
-        .join("") || `<div class="empty-state">Nenhum conteúdo VIP ativo no momento.</div>`}
+        .join("") || `<div class="empty-state">Conteúdo exclusivo em preparação</div>`}
     </section>
     ${selectedContent ? renderVipModal(selectedContent) : ""}
   `;
@@ -1282,6 +1316,8 @@ function renderAdmin() {
       <div class="admin-grid">
         ${adminAppointments()}
         ${adminClients(clients)}
+        ${adminServices()}
+        ${adminVipContents()}
         ${adminSettings()}
       </div>
     </section>
@@ -1366,6 +1402,7 @@ function adminClients(clients) {
 }
 
 function adminServices() {
+  const services = state.adminServices?.length ? state.adminServices : getServices();
   return `
     <section class="admin-card">
       <h2>Serviços</h2>
@@ -1377,12 +1414,12 @@ function adminServices() {
         <input name="benefits" placeholder="Benefícios separados por vírgula" required />
         <button class="gold-btn" type="submit">Criar serviço</button>
       </form>
-      ${getServices().map((service) => `
+      ${services.map((service) => `
         <div class="admin-item">
           <span>${service.name}</span>
           <div class="admin-actions">
             <button class="ghost-btn" data-edit-service="${service.id}">Editar</button>
-            <button class="danger-btn" data-delete-service="${service.id}">Excluir</button>
+            <button class="danger-btn" data-delete-service="${service.id}">Desativar</button>
           </div>
         </div>
       `).join("")}
@@ -1391,7 +1428,7 @@ function adminServices() {
 }
 
 function adminVipContents() {
-  const contents = getVipContents();
+  const contents = state.adminVipContents || [];
   return `
     <section class="admin-card wide">
       <h2>Conteúdos VIP</h2>
@@ -1405,14 +1442,13 @@ function adminVipContents() {
             <option value="">Tipo de conteúdo</option>
             <option value="text">Texto</option>
             <option value="video">Vídeo</option>
-            <option value="image">Imagem</option>
+            <option value="photo">Imagem</option>
             <option value="pdf">PDF</option>
-            <option value="audio">Áudio</option>
             <option value="link">Link externo</option>
           </select>
           <select name="status" required>
             <option value="active">Ativo</option>
-            <option value="inactive">Inativo</option>
+            <option value="draft">Rascunho</option>
           </select>
         </div>
         <label class="vip-url-field">URL do conteúdo
@@ -1427,11 +1463,11 @@ function adminVipContents() {
       </form>
       ${contents.map((content) => `
         <div class="admin-item">
-          <span>${escapeHtml(content.title)} · ${vipTypeLabel(content.type)} · ${content.status === "inactive" ? "inativo" : "ativo"}</span>
+          <span>${escapeHtml(content.title)} · ${vipTypeLabel(content.type)} · ${content.status === "active" ? "ativo" : "rascunho"}</span>
           <div class="admin-actions">
             <button class="ghost-btn" data-edit-content="${content.id}">Editar</button>
-            <button class="ghost-btn" data-toggle-content="${content.id}">${content.status === "inactive" ? "Ativar" : "Desativar"}</button>
-            <button class="danger-btn" data-delete-content="${content.id}">Excluir</button>
+            <button class="ghost-btn" data-toggle-content="${content.id}">${content.status === "active" ? "Desativar" : "Ativar"}</button>
+            <button class="danger-btn" data-delete-content="${content.id}">Arquivar</button>
           </div>
         </div>
       `).join("") || "<p>Nenhum conteúdo VIP cadastrado.</p>"}
@@ -1452,6 +1488,35 @@ function adminSettings() {
       <h3>Horários de atendimento</h3>
       <div class="hours-grid">
         ${businessHours.map(([day, hours]) => `<span>${day}</span><strong>${hours}</strong>`).join("")}
+      </div>
+    </section>
+  `;
+}
+
+function renderPrivacy() {
+  return `
+    <section class="page-title">
+      <p class="eyebrow">Privacidade e LGPD</p>
+      <h1>Política de Privacidade — Habitar o Corpo</h1>
+      <p>Esta política explica, em linguagem clara, como os dados necessários ao aplicativo são utilizados para cadastro, segurança, agendamento e comunicação com clientes.</p>
+    </section>
+    <section class="champagne-section">
+      <div>
+        <h2>Dados utilizados</h2>
+        <p>Podemos tratar nome, e-mail, telefone/WhatsApp, cidade, dados de autenticação, informações operacionais do agendamento e registros técnicos de uso e segurança.</p>
+        <p>O aplicativo não exige que você informe detalhes íntimos ou clínicos nas observações do agendamento. Evite registrar informações sensíveis desnecessárias nesse campo.</p>
+        <h2>Finalidades</h2>
+        <p>Os dados são utilizados para criar e proteger sua conta, confirmar identidade, organizar horários, comunicar confirmações, administrar acessos VIP, prestar o serviço solicitado, prevenir abuso e compreender o funcionamento do aplicativo.</p>
+        <h2>Serviços utilizados</h2>
+        <p>Quando necessário à operação, dados mínimos podem ser processados por fornecedores de infraestrutura, autenticação, hospedagem, e-mail, WhatsApp e Google Calendar. Esses serviços são usados somente para viabilizar as funções do aplicativo.</p>
+        <h2>Retenção e segurança</h2>
+        <p>Os dados são mantidos pelo tempo necessário à operação, segurança, histórico do serviço e obrigações aplicáveis. O acesso administrativo é restrito e senhas não são armazenadas em texto aberto pelo aplicativo.</p>
+        <h2>Seus direitos</h2>
+        <p>Você pode solicitar informações, correção e, quando aplicável, exclusão ou limitação do tratamento dos seus dados. Solicitações podem ser feitas pelo e-mail <strong>${escapeHtml(APP_CONFIG.adminEmail)}</strong> ou pelo WhatsApp oficial.</p>
+        <h2>Compartilhamento</h2>
+        <p>Dados de clientes não são vendidos. O compartilhamento ocorre somente quando necessário à operação do serviço, segurança, atendimento ou cumprimento de obrigação aplicável.</p>
+        <p><small>Última atualização: 18/08/2026. Esta política operacional pode ser atualizada quando novas funcionalidades forem adicionadas.</small></p>
+        <button class="gold-btn" data-route="home">Voltar ao início</button>
       </div>
     </section>
   `;
@@ -1491,6 +1556,7 @@ function render() {
     "admin-login": renderAdminLogin,
     admin: renderAdmin,
     clientes: renderAdminClientsPage,
+    privacidade: renderPrivacy,
   };
   app.innerHTML = (routes[state.route] || renderHome)();
   bindEvents();
@@ -1811,55 +1877,70 @@ async function updateAppointmentStatus(event) {
   }
 }
 
-function createService(event) {
+async function createService(event) {
   event.preventDefault();
-  const data = Object.fromEntries(new FormData(event.currentTarget).entries());
-  const service = {
-    id: data.name.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, ""),
-    name: data.name,
-    duration: data.duration,
-    price: data.price || "Sob consulta",
-    description: data.description,
-    benefits: data.benefits.split(",").map((item) => item.trim()).filter(Boolean),
-  };
-  store.write("services", [service, ...getServices()]);
-  render();
+  const form = event.currentTarget;
+  const data = Object.fromEntries(new FormData(form).entries());
+  const id = data.name.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "");
+  try {
+    const result = await apiRequest("upsert-service", {
+      id,
+      name: data.name.trim(),
+      durationMinutes: durationToMinutes(data.duration),
+      priceCents: priceToCents(data.price),
+      description: data.description.trim(),
+      benefits: data.benefits.split(",").map((item) => item.trim()).filter(Boolean),
+      sortOrder: (state.adminServices || []).reduce((max, item) => Math.max(max, Number(item.sortOrder || 0)), 0) + 10,
+      active: true,
+    });
+    state.adminServices = [result.service, ...(state.adminServices || []).filter((item) => item.id !== result.service.id)];
+    state.services = state.adminServices.filter((item) => item.active !== false);
+    form.reset();
+    render();
+  } catch {
+    alert("Não foi possível salvar o serviço.");
+  }
 }
 
-function deleteService(event) {
-  store.write("services", getServices().filter((service) => service.id !== event.currentTarget.dataset.deleteService));
-  render();
-}
-
-function editService(event) {
-  const serviceId = event.currentTarget.dataset.editService;
-  const services = getServices();
-  const service = services.find((item) => item.id === serviceId);
+async function deleteService(event) {
+  const service = (state.adminServices || []).find((item) => item.id === event.currentTarget.dataset.deleteService);
   if (!service) return;
+  try {
+    const result = await apiRequest("upsert-service", { ...service, active: false });
+    state.adminServices = state.adminServices.map((item) => item.id === result.service.id ? result.service : item);
+    state.services = state.adminServices.filter((item) => item.active !== false);
+    render();
+  } catch {
+    alert("Não foi possível desativar o serviço.");
+  }
+}
 
-  const name = prompt("Nome do serviço", service.name);
-  if (!name) return;
+async function editService(event) {
+  const serviceId = event.currentTarget.dataset.editService;
+  const service = (state.adminServices || []).find((item) => item.id === serviceId) || getServices().find((item) => item.id === serviceId);
+  if (!service) return;
+  const name = prompt("Nome do serviço", service.name); if (!name) return;
   const duration = prompt("Duração", service.duration) || service.duration;
   const price = prompt("Valor", service.price) || service.price;
   const description = prompt("Descrição", service.description) || service.description;
-  const benefits = prompt("Benefícios separados por vírgula", service.benefits.join(", ")) || service.benefits.join(", ");
-
-  store.write(
-    "services",
-    services.map((item) =>
-      item.id === serviceId
-        ? {
-            ...item,
-            name,
-            duration,
-            price,
-            description,
-            benefits: benefits.split(",").map((benefit) => benefit.trim()).filter(Boolean),
-          }
-        : item,
-    ),
-  );
-  render();
+  const benefits = prompt("Benefícios separados por vírgula", (service.benefits || []).join(", ")) || (service.benefits || []).join(", ");
+  try {
+    const result = await apiRequest("upsert-service", {
+      id: service.id,
+      name: name.trim(),
+      durationMinutes: durationToMinutes(duration),
+      priceCents: priceToCents(price),
+      description: description.trim(),
+      benefits: benefits.split(",").map((item) => item.trim()).filter(Boolean),
+      sortOrder: Number(service.sortOrder || 0),
+      active: service.active !== false,
+    });
+    state.adminServices = (state.adminServices || []).map((item) => item.id === serviceId ? result.service : item);
+    state.services = state.adminServices.filter((item) => item.active !== false);
+    render();
+  } catch {
+    alert("Não foi possível atualizar o serviço.");
+  }
 }
 
 function editClient(event) {
@@ -1975,89 +2056,73 @@ async function createVipContent(event) {
   const data = Object.fromEntries(new FormData(form).entries());
   const message = document.querySelector("#contentMessage");
   const validation = validateVipContentData(data);
-  if (!validation.valid) {
-    message.textContent = validation.message;
-    return;
+  if (!validation.valid) { message.textContent = validation.message; return; }
+  try {
+    const result = await apiRequest("upsert-vip-content", {
+      title: data.title.trim(),
+      description: data.description.trim(),
+      type: data.type.trim(),
+      url: data.type === "text" ? "" : data.url.trim(),
+      textContent: data.textContent.trim(),
+      thumbnail: ["photo"].includes(data.type) ? data.url.trim() : "",
+      category: data.category.trim(),
+      status: data.status || "active",
+      sortOrder: (state.adminVipContents || []).reduce((max, item) => Math.max(max, Number(item.sortOrder || 0)), 0) + 10,
+    });
+    await refreshAdminContent();
+    form.reset();
+    message.textContent = "Conteúdo VIP salvo com sucesso.";
+    window.setTimeout(render, 350);
+  } catch {
+    message.textContent = "Não foi possível salvar o conteúdo VIP.";
   }
-
-  const type = data.type.trim();
-  const content = {
-    id: crypto.randomUUID(),
-    title: data.title.trim(),
-    description: data.description.trim(),
-    type,
-    url: type === "text" ? "" : data.url.trim(),
-    textContent: type === "text" ? data.textContent.trim() : data.textContent.trim(),
-    thumbnail: ["image", "photo"].includes(type) ? data.url.trim() : "",
-    date: todayIso(),
-    category: data.category.trim(),
-    status: data.status || "active",
-    access: "VIP",
-  };
-
-  localDataStore.saveVipContents([content, ...getVipContents()]);
-  form.reset();
-  message.textContent = "Conteúdo VIP salvo com sucesso.";
-  window.setTimeout(render, 650);
 }
 
-function deleteVipContent(event) {
-  const content = getVipContents().find((item) => item.id === event.currentTarget.dataset.deleteContent);
+async function deleteVipContent(event) {
+  const content = (state.adminVipContents || []).find((item) => item.id === event.currentTarget.dataset.deleteContent);
   if (!content) return;
-  if (!confirm(`Excluir o conteúdo "${content.title}"?`)) return;
-  localDataStore.saveVipContents(getVipContents().filter((item) => item.id !== content.id));
-  render();
+  if (!confirm(`Arquivar o conteúdo "${content.title}"? Ele poderá ser republicado depois.`)) return;
+  try {
+    await apiRequest("archive-vip-content", { id: content.id });
+    await refreshAdminContent();
+    render();
+  } catch {
+    alert("Não foi possível arquivar o conteúdo.");
+  }
 }
 
-function editVipContent(event) {
+async function editVipContent(event) {
   const contentId = event.currentTarget.dataset.editContent;
-  const contents = getVipContents();
-  const content = contents.find((item) => item.id === contentId);
+  const content = (state.adminVipContents || []).find((item) => item.id === contentId);
   if (!content) return;
-
-  const title = prompt("Título do conteúdo", content.title);
-  if (!title) return;
+  const title = prompt("Título do conteúdo", content.title); if (!title) return;
   const category = prompt("Categoria", content.category) || content.category;
-  const type = prompt("Tipo: text, video, image, pdf, audio ou link", content.type) || content.type;
+  const type = prompt("Tipo: text, video, photo, pdf ou link", content.type) || content.type;
   const description = prompt("Descrição", content.description) || content.description;
   const url = type === "text" ? "" : prompt("URL/link do conteúdo", content.url || "") || content.url || "";
   const textContent = type === "text" ? prompt("Conteúdo em texto", content.textContent || "") || content.textContent || "" : prompt("Texto complementar opcional", content.textContent || "") || content.textContent || "";
-
   const validation = validateVipContentData({ title, category, type, description, url, textContent, status: content.status });
-  if (!validation.valid) {
-    alert(validation.message);
-    return;
+  if (!validation.valid) { alert(validation.message); return; }
+  try {
+    await apiRequest("upsert-vip-content", { id: content.id, title: title.trim(), category: category.trim(), type: type.trim(), description: description.trim(), url: type === "text" ? "" : url.trim(), textContent: textContent.trim(), thumbnail: type === "photo" ? url.trim() : content.thumbnail || "", status: content.status === "archived" ? "draft" : content.status, sortOrder: Number(content.sortOrder || 0) });
+    await refreshAdminContent();
+    render();
+  } catch {
+    alert("Não foi possível atualizar o conteúdo.");
   }
-
-  localDataStore.saveVipContents(
-    contents.map((item) =>
-      item.id === contentId
-        ? {
-            ...item,
-            title: title.trim(),
-            category: category.trim(),
-            type: type.trim(),
-            description: description.trim(),
-            url: type === "text" ? "" : url.trim(),
-            textContent: textContent.trim(),
-            thumbnail: ["image", "photo"].includes(type) ? url.trim() : item.thumbnail || "",
-          }
-        : item,
-    ),
-  );
-  render();
 }
 
-function toggleVipContent(event) {
+async function toggleVipContent(event) {
   const contentId = event.currentTarget.dataset.toggleContent;
-  localDataStore.saveVipContents(
-    getVipContents().map((content) =>
-      content.id === contentId
-        ? { ...content, status: content.status === "inactive" ? "active" : "inactive" }
-        : content,
-    ),
-  );
-  render();
+  const content = (state.adminVipContents || []).find((item) => item.id === contentId);
+  if (!content) return;
+  try {
+    await apiRequest("upsert-vip-content", { id: content.id, title: content.title, category: content.category, type: content.type, description: content.description, url: content.url || "", textContent: content.textContent || "", thumbnail: content.thumbnail || "", status: content.status === "active" ? "draft" : "active", sortOrder: Number(content.sortOrder || 0) });
+    await refreshAdminContent();
+    render();
+  } catch {
+    alert("Não foi possível alterar o status do conteúdo.");
+  }
 }
 
 function updateContentFormFields(form) {
@@ -2078,7 +2143,7 @@ function validateVipContentData(data) {
   const description = String(data.description || "").trim();
   const url = String(data.url || "").trim();
   const textContent = String(data.textContent || "").trim();
-  const urlTypes = ["video", "image", "pdf", "audio", "link"];
+  const urlTypes = ["video", "photo", "pdf", "link"];
 
   if (!title) return { valid: false, message: "Informe o título do conteúdo." };
   if (!category) return { valid: false, message: "Informe a categoria do conteúdo." };
@@ -2105,7 +2170,7 @@ window.addEventListener("hashchange", render);
 if ("serviceWorker" in navigator) {
   navigator.serviceWorker.getRegistrations()
     .then((registrations) => Promise.all(registrations.map((registration) => registration.unregister())))
-    .finally(() => navigator.serviceWorker.register("/service-worker.js?v=20260817-auth-v2", { updateViaCache: "none" }))
+    .finally(() => navigator.serviceWorker.register("/service-worker.js?v=20260818-production-v1", { updateViaCache: "none" }))
     .catch(() => {});
 }
 render();
