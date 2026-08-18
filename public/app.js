@@ -1,3 +1,5 @@
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2.112.3";
+
 const APP_CONFIG = {
   appName: "Habitar o Corpo",
   shortName: "Joelma Souza",
@@ -7,10 +9,8 @@ const APP_CONFIG = {
   whatsapp: "5512988830247",
   pixKey: "11987080279",
   adminEmail: "joelmaespacosama@gmail.com",
-  adminPassword: "Joelma67@#$",
-  vipCode: "JOELMAVIP",
   address: "Rua Fabiola Regina Sardinha, 47 - Res. Armando Moreira Righi, São José dos Campos - SP, CEP: 12247-812",
-  defaultDuration: "1 hora",
+  defaultDuration: "1h30",
   defaultPrice: "R$ 300,00",
   domain: "app.joelmasouzaoficial.com.br",
 };
@@ -31,7 +31,13 @@ const LEGACY_CLIENT_KEYS = [
 ];
 const WHATSAPP_NUMBER = APP_CONFIG.whatsapp;
 const VIP_NOTICE = "Conteúdo privado, autorizado apenas para uso pessoal da cliente cadastrada.";
-// Autenticação local apenas para protótipo. Migrar para Supabase Auth em produção.
+const BOOKING_API_URL = "https://onrmaojjvcbqbgwuhzwq.supabase.co/functions/v1/joelma-booking";
+const AUTH_API_URL = "https://onrmaojjvcbqbgwuhzwq.supabase.co/functions/v1/joelma-auth";
+const SUPABASE_URL = "https://onrmaojjvcbqbgwuhzwq.supabase.co";
+const SUPABASE_PUBLISHABLE_KEY = "sb_publishable_2nB7J2RIftfVxU1wuOXLFQ_50-ksYBZ";
+const authClient = createClient(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY, {
+  auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: true },
+});
 const businessHours = [
   ["Terça-feira", "09:00 às 19:00"],
   ["Quarta-feira", "09:00 às 19:00"],
@@ -53,7 +59,7 @@ const initialServices = [
   },
   {
     id: "curso-vip-massagem-integrativa-tantrica",
-    name: "Curso VIP — Massagem Integrativa Tântrica Quatro Elementos",
+    name: "Curso VIP — Massagem Integrativa Tântrica",
     duration: APP_CONFIG.defaultDuration,
     price: APP_CONFIG.defaultPrice,
     description: "Experiência individual de aprendizado com orientação personalizada, ética e linguagem profissional.",
@@ -74,6 +80,14 @@ const initialServices = [
     price: APP_CONFIG.defaultPrice,
     description: "Vivência reservada para autoconhecimento, presença e consciência corporal, conduzida com respeito e ética.",
     benefits: ["Autoconhecimento", "Presença", "Cuidado reservado"],
+  },
+  {
+    id: "massagem-pedras-quentes",
+    name: "Massagem Relaxante com Pedras Quentes",
+    duration: APP_CONFIG.defaultDuration,
+    price: APP_CONFIG.defaultPrice,
+    description: "Massagem relaxante com pedras aquecidas para conforto, descanso e bem-estar corporal.",
+    benefits: ["Relaxamento", "Conforto térmico", "Alívio de tensões"],
   },
   {
     id: "vivencia-massagem-nuru",
@@ -125,81 +139,9 @@ const initialServices = [
   },
 ];
 
-const initialAppointments = [
-  {
-    id: "demo-agendamento-1",
-    clientId: "client-mariana",
-    serviceId: "massagem-relaxante-terapeutica",
-    serviceName: "Massagem Relaxante Terapêutica",
-    customerName: "Mariana Alves",
-    customerPhone: "(12) 99911-2233",
-    customerEmail: "mariana@email.com",
-    date: todayIso(),
-    time: "10:30",
-    notes: "Primeiro atendimento. Busca relaxamento e alívio de tensão nos ombros.",
-    status: "confirmed",
-    createdAt: new Date().toISOString(),
-  },
-  {
-    id: "demo-agendamento-2",
-    clientId: "client-renata",
-    serviceId: "terapia-tantrica-integrativa",
-    serviceName: "Terapia Tântrica Integrativa",
-    customerName: "Renata Lima",
-    customerPhone: "(12) 98888-4455",
-    customerEmail: "renata@email.com",
-    date: todayIso(),
-    time: "15:00",
-    notes: "Quer conhecer o trabalho integrativo antes de iniciar acompanhamento.",
-    status: "pending",
-    createdAt: new Date().toISOString(),
-  },
-];
+const initialAppointments = [];
 
-const initialClients = [
-  {
-    id: "client-mariana",
-    role: "client",
-    isVip: true,
-    name: "Mariana Alves",
-    phone: "(12) 99911-2233",
-    email: "mariana@email.com",
-    password: "123456",
-    city: "São José dos Campos",
-    acceptedTerms: true,
-    active: true,
-    createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString(),
-  },
-  {
-    id: "client-renata",
-    role: "client",
-    isVip: false,
-    name: "Renata Lima",
-    phone: "(12) 98888-4455",
-    email: "renata@email.com",
-    password: "123456",
-    city: "São José dos Campos",
-    acceptedTerms: true,
-    active: true,
-    createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString(),
-  },
-  {
-    id: "client-vip-demo",
-    role: "client",
-    isVip: true,
-    name: "Cliente VIP",
-    phone: "(12) 98883-0247",
-    email: "clientevip@email.com",
-    password: APP_CONFIG.vipCode,
-    city: "São José dos Campos",
-    acceptedTerms: true,
-    active: true,
-    createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString(),
-  },
-];
+const initialClients = [];
 
 const initialVipContents = [
   {
@@ -243,11 +185,9 @@ const initialVipContents = [
   },
 ];
 
-const initialAdmins = [
-  { id: "admin-demo", name: "Joelma Souza", email: APP_CONFIG.adminEmail, password: APP_CONFIG.adminPassword },
-];
+const initialAdmins = [];
 
-const availableTimes = ["09:00", "10:30", "13:30", "15:00", "16:30", "18:00"];
+const availableTimes = ["09:00", "10:30", "13:30", "15:00", "16:30"];
 
 const state = {
   route: "home",
@@ -258,6 +198,11 @@ const state = {
   vipUser: null,
   client: null,
   admin: null,
+  authReady: false,
+  authSession: null,
+  accountAppointments: [],
+  adminAppointments: [],
+  adminClients: [],
 };
 
 const app = document.querySelector("#app");
@@ -344,13 +289,11 @@ const localDataStore = {
 };
 
 function seedData() {
-  const currentServices = store.read("services", initialServices);
-  store.write("services", currentServices.filter((service) => service.id !== "massagem-pedras-quentes"));
-  migrateClients();
-  migrateAppointments();
+  if (!localStorage.getItem("services")) store.write("services", initialServices);
   migrateVipContents();
-  if (!localStorage.getItem("admins")) store.write("admins", initialAdmins);
-  state.client = getClientSession();
+  [CLIENTS_STORAGE_KEY, APPOINTMENTS_STORAGE_KEY, SESSION_STORAGE_KEY, "admins", "clientSession", "vipUsers"].forEach((key) => localStorage.removeItem(key));
+  LEGACY_CLIENT_KEYS.forEach((key) => localStorage.removeItem(key));
+  state.client = null;
 }
 
 function resetDemoData() {
@@ -435,7 +378,7 @@ function migrateClients() {
       phone: user.phone || "",
       email: user.login,
       city: user.city || "",
-      password: user.password || APP_CONFIG.vipCode,
+      password: user.password || crypto.randomUUID(),
       role: "client",
       isVip: Boolean(user.active),
       active: user.active !== false,
@@ -490,6 +433,129 @@ function clearClientSession() {
   state.client = null;
 }
 
+async function apiRequest(action, payload = {}) {
+  const headers = { "Content-Type": "application/json", Accept: "application/json" };
+  if (state.authSession?.access_token) headers.Authorization = `Bearer ${state.authSession.access_token}`;
+  const response = await fetch(BOOKING_API_URL, {
+    method: "POST",
+    headers,
+    body: JSON.stringify({ action, ...payload }),
+  });
+  const result = await response.json().catch(() => ({ ok: false, error: "resposta_invalida" }));
+  if (!response.ok || result.ok !== true) {
+    const error = new Error(result.error || "request_failed");
+    error.status = response.status;
+    throw error;
+  }
+  return result;
+}
+
+async function authApiRequest(action, payload = {}, { authenticated = false } = {}) {
+  const headers = { "Content-Type": "application/json", Accept: "application/json" };
+  if (authenticated && state.authSession?.access_token) headers.Authorization = `Bearer ${state.authSession.access_token}`;
+  const response = await fetch(AUTH_API_URL, {
+    method: "POST",
+    headers,
+    body: JSON.stringify({ action, ...payload }),
+  });
+  const result = await response.json().catch(() => ({ ok: false, error: "resposta_invalida" }));
+  if (!response.ok || result.ok !== true) {
+    const error = new Error(result.error || "request_failed");
+    error.status = response.status;
+    throw error;
+  }
+  return result;
+}
+
+async function trackActivity(eventName, metadata = {}) {
+  if (!state.authSession?.access_token) return;
+  try {
+    await authApiRequest("track-event", { eventName, metadata }, { authenticated: true });
+  } catch {
+    // Telemetria nunca bloqueia a experiência do cliente.
+  }
+}
+
+async function loadAccount(session, { renderAfter = true } = {}) {
+  state.authSession = session;
+  state.client = null;
+  state.admin = null;
+  state.accountAppointments = [];
+  state.adminAppointments = [];
+  state.adminClients = [];
+  if (session?.access_token) {
+    const account = await apiRequest("account-data");
+    state.client = account.profile;
+    state.accountAppointments = account.bookings || [];
+    if (account.isAdmin) {
+      state.admin = { id: account.profile.id, email: account.profile.email, name: account.profile.name || "Administração" };
+      const dashboard = await apiRequest("admin-data");
+      state.adminAppointments = dashboard.bookings || [];
+      state.adminClients = dashboard.clients || [];
+    }
+  }
+  state.authReady = true;
+  const nextRoute = new URLSearchParams(location.search).get("next");
+  if (nextRoute) {
+    history.replaceState(null, "", `/#${nextRoute}`);
+    state.route = nextRoute;
+  }
+  if (renderAfter) render();
+}
+
+async function initializeAuth() {
+  try {
+    const { data, error } = await authClient.auth.getSession();
+    if (error) throw error;
+    await loadAccount(data.session, { renderAfter: false });
+  } catch (error) {
+    console.error("auth_initialization_failed", error?.message || "unknown");
+    state.authSession = null;
+    state.client = null;
+    state.admin = null;
+    state.authReady = true;
+  }
+  render();
+  authClient.auth.onAuthStateChange((event, session) => {
+    if (event === "INITIAL_SESSION") return;
+    if (event === "PASSWORD_RECOVERY") {
+      state.authSession = session;
+      state.authReady = true;
+      history.replaceState(null, "", "/#nova-senha");
+      state.route = "nova-senha";
+      render();
+      return;
+    }
+    window.setTimeout(() => loadAccount(session).catch(() => {
+      state.authReady = true;
+      render();
+    }), 0);
+  });
+}
+
+async function sendAccessLink(email, nextRoute, options = {}) {
+  const redirect = `${location.origin}/?next=${encodeURIComponent(nextRoute)}`;
+  const { error } = await authClient.auth.signInWithOtp({
+    email: normalizeEmail(email),
+    options: {
+      shouldCreateUser: options.shouldCreateUser === true,
+      emailRedirectTo: redirect,
+      data: options.data || {},
+    },
+  });
+  if (error) throw error;
+}
+
+async function signOut() {
+  await authClient.auth.signOut();
+  state.authSession = null;
+  state.client = null;
+  state.admin = null;
+  state.accountAppointments = [];
+  state.adminAppointments = [];
+  state.adminClients = [];
+}
+
 function formatDate(date) {
   if (!date) return "";
   const [year, month, day] = date.split("-");
@@ -497,7 +563,12 @@ function formatDate(date) {
 }
 
 function todayIso() {
-  return new Date().toISOString().slice(0, 10);
+  return new Intl.DateTimeFormat("en-CA", {
+    timeZone: "America/Sao_Paulo",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).format(new Date());
 }
 
 function normalizePhone(phone) {
@@ -835,13 +906,15 @@ function renderBooking() {
           <select name="time" required>${timeOptions(selectedDate)}</select>
         </label>
       </div>
-      <div class="form-row">
-        <label>Nome <input name="customerName" autocomplete="name" required placeholder="Nome completo" value="${client?.name || ""}" /></label>
-        <label>Telefone/WhatsApp <input name="customerPhone" autocomplete="tel" required placeholder="(12) 99999-9999" value="${client?.phone || ""}" /></label>
-      </div>
-      <label>E-mail <input name="customerEmail" type="email" autocomplete="email" required placeholder="email@exemplo.com" value="${client?.email || ""}" /></label>
-      <label>Observações <textarea name="notes" rows="4" placeholder="Objetivo do atendimento, preferências ou dúvidas"></textarea></label>
-      <button class="gold-btn" type="submit">Confirmar agendamento</button>
+      ${client ? `
+        <div class="form-row">
+          <label>Nome <input name="customerName" autocomplete="name" readonly value="${escapeHtml(client.name || "")}" /></label>
+          <label>Telefone/WhatsApp <input name="customerPhone" autocomplete="tel" readonly value="${escapeHtml(client.phone || "")}" /></label>
+        </div>
+        <label>E-mail <input name="customerEmail" type="email" autocomplete="email" readonly value="${escapeHtml(client.email || "")}" /></label>
+      ` : ""}
+      <label>Observações <textarea name="notes" rows="4" placeholder="Dúvidas ou informações práticas que queira acrescentar"></textarea></label>
+      <button class="gold-btn" type="submit">${client ? "Confirmar agendamento" : "Entrar para confirmar"}</button>
       <p class="form-message" id="bookingMessage"></p>
     </form>
   `;
@@ -853,8 +926,8 @@ function renderAccount() {
       <section class="account-hero">
         <div>
           <p class="eyebrow">Minha Conta</p>
-          <h1>Entre ou crie sua conta</h1>
-          <p>Acompanhe seus agendamentos, atualize seus dados e veja quando o acesso VIP estiver liberado.</p>
+          <h1>Entre ou crie sua conta segura</h1>
+          <p>Entre com seu WhatsApp e senha para acompanhar agendamentos e a liberação VIP.</p>
         </div>
         <div class="account-actions">
           <button class="gold-btn" data-route="entrar">Entrar</button>
@@ -871,11 +944,11 @@ function renderAccount() {
     `;
   }
 
-  const appointments = getClientAppointments(state.client);
+  const appointments = state.accountAppointments;
   return `
     <section class="page-title">
       <p class="eyebrow">Minha Conta</p>
-      <h1>Olá, ${state.client.name}</h1>
+      <h1>Olá, ${escapeHtml(state.client.name || "cliente")}</h1>
       <p>${state.client.isVip ? "Seu acesso VIP está liberado." : "Seu acesso VIP ainda não está liberado."}</p>
       <div class="hero-actions">
         <button class="gold-btn" data-route="agendar">Novo agendamento</button>
@@ -886,10 +959,10 @@ function renderAccount() {
     <section class="account-grid">
       <form class="form-shell account-form" id="clientProfileForm">
         <p class="eyebrow">Meus dados</p>
-        <label>Nome completo <input name="name" required value="${state.client.name}" /></label>
-        <label>Telefone / WhatsApp <input name="phone" required value="${state.client.phone}" /></label>
-        <label>E-mail <input name="email" type="email" required value="${state.client.email}" /></label>
-        <label>Cidade <input name="city" required value="${state.client.city || ""}" /></label>
+        <label>Nome completo <input name="name" required value="${escapeHtml(state.client.name || "")}" /></label>
+        <label>Telefone / WhatsApp <input name="phone" required value="${escapeHtml(state.client.phone || "")}" /></label>
+        <label>E-mail <input name="email" type="email" readonly value="${escapeHtml(state.client.email || "")}" /></label>
+        <label>Cidade <input name="city" required value="${escapeHtml(state.client.city || "")}" /></label>
         <button class="gold-btn" type="submit">Salvar dados</button>
         <p class="form-message" id="profileMessage"></p>
       </form>
@@ -909,11 +982,12 @@ function renderClientLogin() {
     <section class="auth-layout">
       <form class="form-shell auth-card" id="clientLoginForm">
         <p class="eyebrow">Minha Conta</p>
-        <h1>Entrar</h1>
-        <label>E-mail <input name="email" type="email" required placeholder="seuemail@exemplo.com" /></label>
-        <label>Senha <input name="password" type="password" required placeholder="Sua senha" /></label>
-        <button class="text-link-btn" type="button" data-route="recuperar-senha">Esqueci minha senha</button>
+        <h1>Entrar na sua conta</h1>
+        <p>Use seu WhatsApp cadastrado e sua senha. O e-mail também pode ser usado como alternativa.</p>
+        <label>WhatsApp ou e-mail <input name="identifier" autocomplete="username" required placeholder="(12) 99999-9999 ou email@exemplo.com" /></label>
+        <label>Senha <input name="password" type="password" autocomplete="current-password" minlength="8" required /></label>
         <button class="gold-btn" type="submit">Entrar</button>
+        <button class="ghost-btn" type="button" data-route="recuperar-senha">Esqueci minha senha</button>
         <button class="ghost-btn" type="button" data-route="criar-conta">Criar conta</button>
         <p class="form-message" id="clientLoginMessage"></p>
       </form>
@@ -922,48 +996,46 @@ function renderClientLogin() {
 }
 
 function renderPasswordRecovery() {
-  const email = state.recoveryResult?.email || "";
   return `
     <section class="auth-layout">
-      <div class="form-shell auth-card">
+      <form class="form-shell auth-card" id="passwordRecoveryForm">
         <p class="eyebrow">Recuperação de acesso</p>
-        <h1>Recuperar senha</h1>
-        <p>Informe o e-mail cadastrado para solicitar a recuperação de acesso.</p>
-        <form id="passwordRecoveryForm" class="mini-form">
-          <label>E-mail
-            <input name="email" type="email" required placeholder="seuemail@exemplo.com" value="${escapeHtml(email)}" />
-          </label>
-          <button class="gold-btn" type="submit">Verificar cadastro</button>
-        </form>
-        <div id="passwordRecoveryResult">${renderRecoveryResult(state.recoveryResult)}</div>
-      </div>
+        <h1>Redefinir sua senha</h1>
+        <p>Informe o e-mail cadastrado. Você receberá um link seguro para criar uma nova senha.</p>
+        <label>E-mail <input name="email" type="email" autocomplete="email" required placeholder="seuemail@exemplo.com" /></label>
+        <button class="gold-btn" type="submit">Enviar link de recuperação</button>
+        <button class="ghost-btn" type="button" data-route="entrar">Voltar para entrar</button>
+        <p class="form-message" id="passwordRecoveryMessage"></p>
+      </form>
     </section>
   `;
 }
 
-function renderRecoveryResult(result) {
-  if (!result) return "";
-  if (result.status === "found") {
-    const message = `Olá, Joelma. Esqueci minha senha do app Habitar o Corpo. Meu e-mail cadastrado é: ${result.email}`;
+function renderNewPassword() {
+  if (!state.authSession?.access_token) {
     return `
-      <div class="recovery-result success">
-        <p>Encontramos seu cadastro. Para sua segurança, solicite a redefinição de senha pelo WhatsApp.</p>
-        <a class="gold-btn link-btn" href="${waLink(message)}" target="_blank" rel="noreferrer">Solicitar nova senha pelo WhatsApp</a>
-      </div>
-    `;
-  }
-  if (result.status === "missing") {
-    return `
-      <div class="recovery-result">
-        <p>Não encontramos cadastro com este e-mail. Verifique o endereço digitado ou crie uma nova conta.</p>
-        <div class="button-row">
-          <button class="ghost-btn" data-route="recuperar-senha" type="button">Tentar novamente</button>
-          <button class="gold-btn" data-route="criar-conta" type="button">Criar conta</button>
+      <section class="auth-layout">
+        <div class="form-shell auth-card">
+          <p class="eyebrow">Nova senha</p>
+          <h1>Link de recuperação necessário</h1>
+          <p>Abra o link recebido no seu e-mail para definir uma nova senha.</p>
+          <button class="gold-btn" data-route="recuperar-senha">Enviar novo link</button>
         </div>
-      </div>
+      </section>
     `;
   }
-  return "";
+  return `
+    <section class="auth-layout">
+      <form class="form-shell auth-card" id="newPasswordForm">
+        <p class="eyebrow">Nova senha</p>
+        <h1>Crie sua nova senha</h1>
+        <label>Nova senha <input name="password" type="password" autocomplete="new-password" minlength="8" required /></label>
+        <label>Confirmar nova senha <input name="passwordConfirm" type="password" autocomplete="new-password" minlength="8" required /></label>
+        <button class="gold-btn" type="submit">Salvar nova senha</button>
+        <p class="form-message" id="newPasswordMessage"></p>
+      </form>
+    </section>
+  `;
 }
 
 function renderClientSignup() {
@@ -971,15 +1043,14 @@ function renderClientSignup() {
     <section class="auth-layout">
       <form class="form-shell auth-card" id="clientSignupForm">
         <p class="eyebrow">Minha Conta</p>
-        <h1>Criar conta</h1>
+        <h1>Criar conta segura</h1>
+        <p>Cadastre seus dados uma única vez. O e-mail será usado para confirmação e recuperação da senha.</p>
         <label>Nome completo <input name="name" autocomplete="name" required placeholder="Nome completo" /></label>
         <label>Telefone / WhatsApp <input name="phone" autocomplete="tel" required placeholder="(12) 99999-9999" /></label>
         <label>E-mail <input name="email" type="email" autocomplete="email" required placeholder="email@exemplo.com" /></label>
-        <div class="form-row">
-          <label>Senha <input name="password" type="password" required placeholder="Crie uma senha" /></label>
-          <label>Confirmar senha <input name="confirmPassword" type="password" required placeholder="Repita a senha" /></label>
-        </div>
         <label>Cidade <input name="city" required placeholder="Sua cidade" /></label>
+        <label>Senha <input name="password" type="password" autocomplete="new-password" minlength="8" required /></label>
+        <label>Confirmar senha <input name="passwordConfirm" type="password" autocomplete="new-password" minlength="8" required /></label>
         <label class="checkbox-label">
           <input name="acceptedTerms" type="checkbox" />
           <span>Li e aceito os Termos de Uso e a Política de Privacidade.</span>
@@ -1005,44 +1076,58 @@ function getClientAppointments(client) {
 function clientAppointmentCard(appointment) {
   return `
     <article class="appointment-mini">
-      <strong>${appointment.serviceName}</strong>
-      <span>${formatDate(appointment.date)} às ${appointment.time}</span>
+      <strong>${escapeHtml(appointment.serviceName || "Atendimento")}</strong>
+      <span>${formatDate(appointment.date)} às ${escapeHtml(appointment.time || "")}</span>
       <small>${appointmentStatusLabel(appointment.status)}</small>
     </article>
   `;
 }
 
 function timeOptions(date) {
-  const appointments = getAppointments();
   return `<option value="">Selecione</option>${availableTimes
-    .map((time) => {
-      const busy = appointments.some(
-        (appointment) =>
-          appointment.date === date &&
-          appointment.time === time &&
-          appointment.status !== "canceled",
-      );
-      return `<option value="${time}" ${busy ? "disabled" : ""}>${time}${busy ? " indisponível" : ""}</option>`;
-    })
+    .map((time) => `<option value="${time}">${time}</option>`)
     .join("")}`;
+}
+
+async function refreshAvailableTimes(date, select) {
+  select.disabled = true;
+  select.innerHTML = '<option value="">Consultando horários...</option>';
+  try {
+    const response = await fetch(`${BOOKING_API_URL}?date=${encodeURIComponent(date)}`, {
+      headers: { Accept: "application/json" },
+    });
+    const result = await response.json();
+    if (!response.ok || result.ok !== true || !Array.isArray(result.slots)) {
+      throw new Error("availability_failed");
+    }
+    const slots = result.slots
+      .filter((item) => item && item.available === true && availableTimes.includes(item.slot))
+      .map((item) => item.slot);
+    select.innerHTML = slots.length
+      ? `<option value="">Selecione</option>${slots.map((time) => `<option value="${time}">${time}</option>`).join("")}`
+      : '<option value="">Nenhum horário disponível</option>';
+  } catch {
+    select.innerHTML = '<option value="">Não foi possível consultar</option>';
+  } finally {
+    select.disabled = false;
+  }
 }
 
 function renderConfirmation() {
   const booking = state.bookingDraft;
   if (!booking) return renderBooking();
-  const message = `Olá, Joelma! Novo agendamento:\nServiço: ${booking.serviceName}\nNome: ${booking.customerName}\nData: ${formatDate(booking.date)}\nHorário: ${booking.time}\nTelefone: ${booking.customerPhone}`;
   return `
     <section class="success-panel">
-      <p class="script">Agendamento enviado</p>
-      <h1>Solicitação registrada com sucesso</h1>
-      <p>Agora você pode avisar a Joelma pelo WhatsApp com a mensagem pronta.</p>
+      <p class="script">Agendamento confirmado</p>
+      <h1>Seu horário está reservado</h1>
+      <p>A confirmação foi registrada automaticamente. A Joelma receberá a notificação do agendamento.</p>
       <p class="pix-line">Pix provisório para pagamento/sinal: <strong>${APP_CONFIG.pixKey}</strong></p>
       <div class="summary-box">
         <strong>${booking.serviceName}</strong>
         <span>${formatDate(booking.date)} às ${booking.time}</span>
         <span>${booking.customerName} · ${booking.customerPhone}</span>
       </div>
-      <a class="gold-btn link-btn" href="${waLink(message)}" target="_blank" rel="noreferrer">Enviar pelo WhatsApp</a>
+      <a class="gold-btn link-btn" href="${waLink("Olá, Joelma! Tenho uma dúvida sobre meu agendamento.")}" target="_blank" rel="noreferrer">Falar com a Joelma</a>
     </section>
   `;
 }
@@ -1062,20 +1147,16 @@ function renderVipLogin() {
       </section>
     `;
   }
-  if (state.vipUser) return renderVipContent();
   return `
     <section class="auth-layout">
-      <form class="form-shell auth-card" id="vipLoginForm">
+      <div class="form-shell auth-card">
         <p class="eyebrow">Área VIP</p>
-        <h1>Entrar com acesso autorizado</h1>
+        <h1>Entre pela sua conta</h1>
         <p>${VIP_NOTICE}</p>
-        <label>E-mail ou telefone <input name="login" required placeholder="cliente@vip.com" /></label>
-        <label>Senha ou código VIP <input name="password" type="password" required placeholder="JOELMAVIP" /></label>
-        <button class="text-link-btn" type="button" data-route="recuperar-senha">Esqueci minha senha</button>
-        <button class="gold-btn" type="submit">Acessar conteúdo</button>
-        <button class="ghost-btn" type="button" data-route="minha-conta">Entrar pela Minha Conta</button>
-        <p class="form-message" id="vipMessage"></p>
-      </form>
+        <p>O acesso VIP usa a mesma conta e senha do aplicativo.</p>
+        <button class="gold-btn" type="button" data-route="entrar">Entrar na minha conta</button>
+        <button class="ghost-btn" type="button" data-route="minha-conta">Voltar para Minha Conta</button>
+      </div>
     </section>
   `;
 }
@@ -1088,7 +1169,7 @@ function renderVipContent() {
       <p class="eyebrow">VIP</p>
       <h1>Fotos e vídeos exclusivos</h1>
       <p>${VIP_NOTICE}</p>
-      ${state.vipUser ? `<button class="ghost-btn" id="vipLogout">Sair da área VIP</button>` : `<button class="ghost-btn" data-route="minha-conta">Minha Conta</button>`}
+      <button class="ghost-btn" data-route="minha-conta">Minha Conta</button>
     </section>
     <section class="media-grid">
       ${contents
@@ -1165,33 +1246,30 @@ function renderVipMedia(content) {
 }
 
 function renderAdminLogin() {
-  if (state.admin) return renderAdmin();
   return `
     <section class="auth-layout">
       <form class="form-shell auth-card" id="adminLoginForm">
         <p class="eyebrow">Administração</p>
-        <h1>Login administrativo</h1>
-        <label>E-mail <input name="email" type="email" required placeholder="${APP_CONFIG.adminEmail}" /></label>
-        <label>Senha <input name="password" type="password" required placeholder="Senha administrativa" /></label>
-        <button class="gold-btn" type="submit">Entrar no painel</button>
-        <p class="form-message" id="adminMessage"></p>
+        <h1>Painel seguro</h1>
+        <p>Digite um e-mail autorizado. O acesso será confirmado por um link de uso único.</p>
+        <label>E-mail administrativo <input name="email" type="email" required value="${escapeHtml(APP_CONFIG.adminEmail)}" /></label>
+        <button class="gold-btn" type="submit">Enviar link administrativo</button>
+        <p class="form-message" id="adminLoginMessage"></p>
       </form>
     </section>
   `;
 }
 
 function renderAdmin() {
-  const appointments = getAppointments();
+  const appointments = state.adminAppointments;
   const todayAppointments = appointments.filter((item) => item.date === todayIso());
-  const clients = getClients();
+  const clients = state.adminClients;
   return `
     <section class="admin-shell">
       <div class="section-heading">
         <p class="eyebrow">Painel administrativo</p>
         <h1>Dashboard</h1>
         <div class="admin-actions">
-          <button class="ghost-btn" id="resetDemo">Restaurar demo</button>
-          <button class="danger-btn" id="clearLocalData">Limpar dados locais de teste</button>
           <button class="ghost-btn" id="adminLogout">Sair</button>
         </div>
       </div>
@@ -1204,8 +1282,6 @@ function renderAdmin() {
       <div class="admin-grid">
         ${adminAppointments()}
         ${adminClients(clients)}
-        ${adminServices()}
-        ${adminVipContents()}
         ${adminSettings()}
       </div>
     </section>
@@ -1213,7 +1289,7 @@ function renderAdmin() {
 }
 
 function renderAdminClientsPage() {
-  const clients = getClients();
+  const clients = state.adminClients;
   return `
     <section class="admin-shell">
       <div class="section-heading">
@@ -1247,15 +1323,15 @@ function uniqueClients(appointments) {
 }
 
 function adminAppointments() {
-  const appointments = getAppointments();
-  const statuses = ["pending", "confirmed", "awaiting_payment", "paid", "completed", "canceled"];
+  const appointments = state.adminAppointments;
+  const statuses = ["confirmed", "completed", "canceled", "no_show"];
   return `
     <section class="admin-card wide">
       <h2>Agendamentos</h2>
       <div class="table-list">
         ${appointments.length ? appointments.map((item) => `
           <article>
-            <div><strong>${item.customerName}</strong><span>${item.serviceName} · ${formatDate(item.date)} às ${item.time}</span></div>
+            <div><strong>${escapeHtml(item.customerName || "Cliente")}</strong><span>${escapeHtml(item.serviceName || "Atendimento")} · ${formatDate(item.date)} às ${escapeHtml(item.time || "")}</span></div>
             <select data-status="${item.id}">
               ${statuses.map((status) => `<option value="${status}" ${item.status === status ? "selected" : ""}>${appointmentStatusLabel(status)}</option>`).join("")}
             </select>
@@ -1271,46 +1347,16 @@ function adminClients(clients) {
     <section class="admin-card wide">
       <h2>Clientes</h2>
       <strong class="admin-counter">Clientes cadastrados: ${clients.length}</strong>
-      <div class="client-diagnostics">
-        <strong>Diagnóstico de clientes</strong>
-        <span>Chave oficial usada: ${CLIENTS_STORAGE_KEY}</span>
-        <span>Total de clientes: ${clients.length}</span>
-        <span>Sessão atual: ${localDataStore.getSession()?.email || "nenhuma"}</span>
-        <small>${clients.map((client) => normalizeEmail(client.email)).filter(Boolean).join(", ") || "Nenhum e-mail carregado"}</small>
-      </div>
-      <p class="admin-warning">Esta é uma recuperação provisória. Em produção, use autenticação segura com backend.</p>
-      <form id="adminClientForm" class="mini-form">
-        <div class="form-row">
-          <input name="name" placeholder="Nome completo" required />
-          <input name="phone" placeholder="Telefone / WhatsApp" required />
-        </div>
-        <div class="form-row">
-          <input name="email" type="email" placeholder="E-mail" required />
-          <input name="city" placeholder="Cidade" />
-        </div>
-        <div class="form-row">
-          <input name="password" type="password" placeholder="Senha provisória" required />
-          <select name="isVip">
-            <option value="false">Cliente comum</option>
-            <option value="true">Cliente VIP</option>
-          </select>
-        </div>
-        <button class="gold-btn" type="submit">Criar cliente</button>
-        <p class="form-message" id="adminClientMessage"></p>
-      </form>
       <div class="client-grid">
         ${clients.length ? clients.map((client) => `
           <article class="client-card">
-            <strong>${client.name}</strong>
-            <span>${client.phone}</span>
-            <span>${client.email}</span>
-            <span>${client.city || "Cidade não informada"}</span>
+            <strong>${escapeHtml(client.name || "Cliente")}</strong>
+            <span>${escapeHtml(client.phone || "Telefone não informado")}</span>
+            <span>${escapeHtml(client.email || "")}</span>
+            <span>${escapeHtml(client.city || "Cidade não informada")}</span>
             <small>${client.isVip ? "VIP ativo" : "VIP não liberado"}</small>
             <div class="admin-actions">
-              <button class="ghost-btn" data-edit-client="${client.id}">Editar</button>
-              <button class="ghost-btn" data-reset-client-password="${client.id}">Redefinir senha</button>
               <button class="ghost-btn" data-toggle-client-vip="${client.id}">${client.isVip ? "Desativar VIP" : "Ativar VIP"}</button>
-              <button class="danger-btn" data-delete-client="${client.id}">Excluir</button>
             </div>
           </article>
         `).join("") : "<p>Nenhuma cliente cadastrada ainda.</p>"}
@@ -1413,7 +1459,11 @@ function adminSettings() {
 
 function render() {
   parseRoute();
-  if (state.route === "vip-conteudo" && !state.vipUser && !state.client?.isVip) state.route = "vip-login";
+  if (!state.authReady) {
+    app.innerHTML = `<section class="auth-layout"><div class="form-shell auth-card"><p class="eyebrow">Habitar o Corpo</p><h1>Carregando acesso seguro...</h1></div></section>`;
+    return;
+  }
+  if (state.route === "vip-conteudo" && !state.client?.isVip) state.route = "vip-login";
   if (state.route === "admin" && !state.admin) state.route = "admin-login";
   if (state.route === "clientes" && !state.admin) state.route = "admin-login";
   document.body.classList.toggle("admin-logged-in", Boolean(state.admin));
@@ -1421,7 +1471,7 @@ function render() {
     link.classList.toggle("hidden-field", !state.admin);
   });
   document.querySelectorAll("[data-nav]").forEach((link) => {
-    const accountRoutes = ["minha-conta", "entrar", "criar-conta", "recuperar-senha"];
+    const accountRoutes = ["minha-conta", "entrar", "criar-conta", "recuperar-senha", "nova-senha"];
     const isAccount = link.dataset.nav === "minha-conta" && accountRoutes.includes(state.route);
     link.classList.toggle("active", link.dataset.nav === state.route || isAccount);
   });
@@ -1435,6 +1485,7 @@ function render() {
     entrar: renderClientLogin,
     "criar-conta": renderClientSignup,
     "recuperar-senha": renderPasswordRecovery,
+    "nova-senha": renderNewPassword,
     "vip-login": renderVipLogin,
     "vip-conteudo": renderVipContent,
     "admin-login": renderAdminLogin,
@@ -1458,48 +1509,31 @@ function bindEvents() {
 
   const bookingForm = document.querySelector("#bookingForm");
   if (bookingForm) {
-    const serviceInput = bookingForm.elements.serviceId;
     const dateInput = bookingForm.elements.date;
     const timeInput = bookingForm.elements.time;
-    const refreshTimes = () => {
-      timeInput.innerHTML = timeOptions(dateInput.value);
-    };
-    serviceInput.addEventListener("change", refreshTimes);
+    const refreshTimes = () => refreshAvailableTimes(dateInput.value, timeInput);
     dateInput.addEventListener("change", refreshTimes);
     bookingForm.addEventListener("submit", submitBooking);
+    refreshTimes();
   }
 
-  document.querySelector("#vipLoginForm")?.addEventListener("submit", submitVipLogin);
   document.querySelector("#clientLoginForm")?.addEventListener("submit", submitClientLogin);
   document.querySelector("#clientSignupForm")?.addEventListener("submit", submitClientSignup);
   document.querySelector("#passwordRecoveryForm")?.addEventListener("submit", submitPasswordRecovery);
+  document.querySelector("#newPasswordForm")?.addEventListener("submit", submitNewPassword);
   document.querySelector("#clientProfileForm")?.addEventListener("submit", updateClientProfile);
-  document.querySelector("#clientLogout")?.addEventListener("click", () => {
-    clearClientSession();
+  document.querySelector("#clientLogout")?.addEventListener("click", async () => {
+    await signOut();
     setRoute("minha-conta");
   });
   document.querySelector("#adminLoginForm")?.addEventListener("submit", submitAdminLogin);
-  document.querySelector("#vipLogout")?.addEventListener("click", () => {
-    state.vipUser = null;
-    setRoute("vip-login");
-  });
-  document.querySelector("#adminLogout")?.addEventListener("click", () => {
-    state.admin = null;
+  document.querySelector("#adminLogout")?.addEventListener("click", async () => {
+    await signOut();
     setRoute("admin-login");
-  });
-  document.querySelector("#resetDemo")?.addEventListener("click", () => {
-    resetDemoData();
-    render();
-  });
-  document.querySelector("#clearLocalData")?.addEventListener("click", () => {
-    if (!confirm("Apagar clientes, agendamentos, conteúdos VIP e sessão locais deste navegador?")) return;
-    localDataStore.clearTestData();
-    location.reload();
   });
 
   document.querySelectorAll("[data-status]").forEach((select) => select.addEventListener("change", updateAppointmentStatus));
   document.querySelector("#serviceForm")?.addEventListener("submit", createService);
-  document.querySelector("#adminClientForm")?.addEventListener("submit", createAdminClient);
   const contentForm = document.querySelector("#contentForm");
   if (contentForm) {
     const syncContentFields = () => updateContentFormFields(contentForm);
@@ -1509,10 +1543,7 @@ function bindEvents() {
   }
   document.querySelectorAll("[data-delete-service]").forEach((button) => button.addEventListener("click", deleteService));
   document.querySelectorAll("[data-edit-service]").forEach((button) => button.addEventListener("click", editService));
-  document.querySelectorAll("[data-edit-client]").forEach((button) => button.addEventListener("click", editClient));
-  document.querySelectorAll("[data-reset-client-password]").forEach((button) => button.addEventListener("click", resetClientPassword));
   document.querySelectorAll("[data-toggle-client-vip]").forEach((button) => button.addEventListener("click", toggleClientVip));
-  document.querySelectorAll("[data-delete-client]").forEach((button) => button.addEventListener("click", deleteClient));
   document.querySelectorAll("[data-open-vip]").forEach((button) => button.addEventListener("click", () => setRoute("vip-conteudo", { id: button.dataset.openVip })));
   document.querySelectorAll("[data-close-vip]").forEach((button) => button.addEventListener("click", () => setRoute("vip-conteudo")));
   document.querySelectorAll("[data-delete-content]").forEach((button) => button.addEventListener("click", deleteVipContent));
@@ -1520,207 +1551,264 @@ function bindEvents() {
   document.querySelectorAll("[data-toggle-content]").forEach((button) => button.addEventListener("click", toggleVipContent));
 }
 
-function submitBooking(event) {
+async function submitBooking(event) {
   event.preventDefault();
+  if (!state.authSession?.access_token || !state.client) {
+    setRoute("entrar");
+    return;
+  }
   const form = event.currentTarget;
   const formData = Object.fromEntries(new FormData(form).entries());
   const service = getServices().find((item) => item.id === formData.serviceId);
-  const appointments = getAppointments();
-  const conflict = appointments.some(
-    (item) =>
-      item.date === formData.date &&
-      item.time === formData.time &&
-      item.status !== "canceled",
-  );
-  if (conflict) {
-    document.querySelector("#bookingMessage").textContent = "Este horário acabou de ficar indisponível.";
+  const message = document.querySelector("#bookingMessage");
+  const submitButton = form.querySelector('button[type="submit"]');
+  if (!service || !formData.time) {
+    message.textContent = "Escolha um serviço e um horário disponível.";
     return;
   }
-  const appointment = {
-    id: crypto.randomUUID(),
-    clientId: state.client?.id || null,
-    serviceId: service.id,
-    serviceName: service.name,
-    customerName: formData.customerName,
-    customerPhone: formData.customerPhone,
-    customerEmail: formData.customerEmail,
-    date: formData.date,
-    time: formData.time,
-    notes: formData.notes,
-    status: "pending",
-    createdAt: new Date().toISOString(),
-  };
-  localDataStore.saveAppointments([appointment, ...appointments]);
-  state.bookingDraft = appointment;
-  setRoute("confirmacao");
+  submitButton.disabled = true;
+  message.textContent = "Confirmando seu horário...";
+  await trackActivity("booking_started", { serviceId: service.id, date: formData.date });
+  try {
+    const response = await fetch(BOOKING_API_URL, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Accept: "application/json",
+        Authorization: `Bearer ${state.authSession.access_token}`,
+      },
+      body: JSON.stringify({
+        action: "book",
+        idempotencyKey: crypto.randomUUID(),
+        serviceId: service.id,
+        customerName: state.client.name,
+        customerPhone: state.client.phone,
+        customerEmail: state.client.email,
+        date: formData.date,
+        time: formData.time,
+        notes: formData.notes,
+      }),
+    });
+    const result = await response.json();
+    if (!response.ok || result.ok !== true) {
+      if (response.status === 401 || response.status === 403) {
+        message.textContent = "Sua sessão expirou. Entre novamente para confirmar.";
+        return;
+      }
+      if (response.status === 409 || result.error === "horario_indisponivel") {
+        message.textContent = "Este horário acabou de ficar indisponível. Escolha outro.";
+        await refreshAvailableTimes(formData.date, form.elements.time);
+        return;
+      }
+      throw new Error(result.error || "booking_failed");
+    }
+    const appointment = {
+      id: result.bookingId,
+      clientId: state.client.id,
+      serviceId: service.id,
+      serviceName: service.name,
+      customerName: state.client.name,
+      customerPhone: state.client.phone,
+      customerEmail: state.client.email,
+      date: formData.date,
+      time: formData.time,
+      notes: formData.notes,
+      status: "confirmed",
+      startAt: result.startAt,
+      endAt: result.endAt,
+      createdAt: new Date().toISOString(),
+    };
+    state.accountAppointments = [appointment, ...state.accountAppointments.filter((item) => item.id !== appointment.id)];
+    state.bookingDraft = appointment;
+    await trackActivity("booking_completed", { serviceId: service.id, bookingId: result.bookingId });
+    setRoute("confirmacao");
+  } catch {
+    message.textContent = "Não foi possível confirmar agora. Tente novamente em instantes.";
+  } finally {
+    submitButton.disabled = false;
+  }
 }
 
-function submitVipLogin(event) {
+async function submitClientLogin(event) {
   event.preventDefault();
   const data = Object.fromEntries(new FormData(event.currentTarget).entries());
-  if (String(data.password).trim().toUpperCase() === APP_CONFIG.vipCode) {
-    state.vipUser = { id: "code-access", name: "Acesso provisório", login: data.login, active: true };
-    setRoute("vip-conteudo");
-    return;
+  const message = document.querySelector("#clientLoginMessage");
+  const button = event.currentTarget.querySelector('button[type="submit"]');
+  const identifier = String(data.identifier || "").trim();
+  const password = String(data.password || "");
+  button.disabled = true;
+  message.textContent = "Entrando...";
+  try {
+    if (identifier.includes("@")) {
+      const { data: loginData, error } = await authClient.auth.signInWithPassword({ email: normalizeEmail(identifier), password });
+      if (error) throw error;
+      if (loginData.session) await loadAccount(loginData.session, { renderAfter: false });
+    } else {
+      const result = await authApiRequest("login-with-phone", { phone: identifier, password });
+      const { data: sessionData, error } = await authClient.auth.setSession({
+        access_token: result.access_token,
+        refresh_token: result.refresh_token,
+      });
+      if (error) throw error;
+      if (sessionData.session) await loadAccount(sessionData.session, { renderAfter: false });
+    }
+    await trackActivity("login_success");
+    setRoute("minha-conta");
+  } catch {
+    message.textContent = "WhatsApp/e-mail ou senha inválidos.";
+  } finally {
+    button.disabled = false;
   }
-  const client = getClients().find(
-    (item) =>
-      item.active !== false &&
-      item.isVip &&
-      (normalizeEmail(item.email) === normalizeEmail(data.login) || normalizePhone(item.phone || "") === normalizePhone(data.login || "")) &&
-      item.password === data.password,
-  );
-  if (!client) {
-    document.querySelector("#vipMessage").textContent = "Acesso não autorizado.";
-    return;
-  }
-  state.vipUser = { id: client.id, name: client.name, login: client.email, active: true };
-  setRoute("vip-conteudo");
 }
 
-function submitClientLogin(event) {
-  event.preventDefault();
-  const data = Object.fromEntries(new FormData(event.currentTarget).entries());
-  const email = normalizeEmail(data.email);
-  const client = findClientByEmail(email);
-  if (!client || client.active === false || client.password !== data.password) {
-    document.querySelector("#clientLoginMessage").textContent = "E-mail ou senha incorretos.";
-    return;
-  }
-  saveClientSession(client);
-  setRoute("minha-conta");
-}
-
-function submitClientSignup(event) {
+async function submitClientSignup(event) {
   event.preventDefault();
   const form = event.currentTarget;
   const data = Object.fromEntries(new FormData(form).entries());
   const message = document.querySelector("#clientSignupMessage");
   const email = normalizeEmail(data.email);
+  const password = String(data.password || "");
 
-  if (!data.name.trim()) {
-    message.textContent = "Informe seu nome completo.";
-    return;
-  }
-  if (!data.phone.trim()) {
-    message.textContent = "Informe seu telefone/WhatsApp.";
-    return;
-  }
-  if (!email || !isValidEmail(email)) {
-    message.textContent = "Informe um e-mail válido.";
-    return;
-  }
-  if (!data.password) {
-    message.textContent = "Crie uma senha.";
-    return;
-  }
-  if (data.password !== data.confirmPassword) {
-    message.textContent = "A confirmação de senha precisa ser igual à senha.";
-    return;
-  }
-  if (!form.elements.acceptedTerms.checked) {
-    message.textContent = "Aceite os Termos de Uso e a Política de Privacidade.";
-    return;
-  }
-  if (findClientByEmail(email)) {
-    message.innerHTML = `
-      Este e-mail já está cadastrado. Entrar ou recuperar senha?
-      <div class="button-row inline-actions">
-        <button class="ghost-btn" type="button" data-route="entrar">Entrar</button>
-        <button class="gold-btn" type="button" data-route="recuperar-senha">Recuperar senha</button>
-      </div>
-    `;
-    bindEvents();
-    return;
-  }
+  if (!String(data.name || "").trim()) { message.textContent = "Informe seu nome completo."; return; }
+  if (!String(data.phone || "").trim()) { message.textContent = "Informe seu telefone/WhatsApp."; return; }
+  if (!email || !isValidEmail(email)) { message.textContent = "Informe um e-mail válido."; return; }
+  if (password.length < 8) { message.textContent = "Crie uma senha com pelo menos 8 caracteres."; return; }
+  if (password !== String(data.passwordConfirm || "")) { message.textContent = "As senhas não coincidem."; return; }
+  if (!form.elements.acceptedTerms.checked) { message.textContent = "Aceite os Termos de Uso e a Política de Privacidade."; return; }
 
-  const client = {
-    id: crypto.randomUUID(),
-    role: "client",
-    isVip: false,
-    name: data.name.trim(),
-    phone: data.phone.trim(),
-    email,
-    password: data.password,
-    city: data.city.trim(),
-    acceptedTerms: true,
-    active: true,
-    createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString(),
-  };
-  const savedClient = localDataStore.createClient(client);
-  saveClientSession(savedClient);
-  setRoute("minha-conta");
-}
-
-function submitPasswordRecovery(event) {
-  event.preventDefault();
-  const data = Object.fromEntries(new FormData(event.currentTarget).entries());
-  const normalizedEmail = normalizeEmail(data.email);
-  const clients = getClients();
-  const foundClient = findClientByEmail(normalizedEmail);
-
-  // Debug temporário:
-  // console.log("Clientes carregados:", clients);
-  // console.log("E-mail pesquisado:", normalizedEmail);
-  // console.log("Cliente encontrado:", foundClient || null);
-
-  state.recoveryResult = {
-    status: foundClient ? "found" : "missing",
-    email: normalizedEmail,
-  };
-
-  const resultContainer = document.querySelector("#passwordRecoveryResult");
-  if (resultContainer) {
-    resultContainer.innerHTML = renderRecoveryResult(state.recoveryResult);
-    bindEvents();
+  const button = form.querySelector('button[type="submit"]');
+  button.disabled = true;
+  message.textContent = "Criando sua conta segura...";
+  try {
+    const redirect = `${location.origin}/?next=${encodeURIComponent("minha-conta")}`;
+    const { data: signUpData, error } = await authClient.auth.signUp({
+      email,
+      password,
+      options: {
+        emailRedirectTo: redirect,
+        data: {
+          full_name: String(data.name).trim(),
+          phone: String(data.phone).trim(),
+          city: String(data.city || "").trim(),
+          accepted_terms_at: new Date().toISOString(),
+        },
+      },
+    });
+    if (error) throw error;
+    if (signUpData.session) {
+      await loadAccount(signUpData.session, { renderAfter: false });
+      setRoute("minha-conta");
+      return;
+    }
+    message.textContent = "Conta criada. Confira seu e-mail para confirmar o cadastro e depois entre com sua senha.";
+  } catch {
+    message.textContent = "Não foi possível criar a conta agora. Confira os dados ou tente novamente em instantes.";
+  } finally {
+    button.disabled = false;
   }
 }
 
-function updateClientProfile(event) {
+async function submitPasswordRecovery(event) {
   event.preventDefault();
   const data = Object.fromEntries(new FormData(event.currentTarget).entries());
   const email = normalizeEmail(data.email);
-  const message = document.querySelector("#profileMessage");
-
-  if (!data.name.trim() || !data.phone.trim() || !email || !isValidEmail(email)) {
-    message.textContent = "Revise nome, telefone e e-mail.";
-    return;
+  const message = document.querySelector("#passwordRecoveryMessage");
+  const button = event.currentTarget.querySelector('button[type="submit"]');
+  button.disabled = true;
+  message.textContent = "Enviando link de recuperação...";
+  try {
+    const redirectTo = `${location.origin}/?next=${encodeURIComponent("nova-senha")}`;
+    const { error } = await authClient.auth.resetPasswordForEmail(email, { redirectTo });
+    if (error) throw error;
+    message.textContent = "Se este e-mail estiver cadastrado, você receberá o link para criar uma nova senha. Confira também o spam.";
+  } catch {
+    message.textContent = "Não foi possível enviar a recuperação agora. Tente novamente em instantes.";
+  } finally {
+    button.disabled = false;
   }
-  const duplicate = getClients().some((client) => client.id !== state.client.id && normalizeEmail(client.email) === email);
-  if (duplicate) {
-    message.textContent = "Este e-mail já está em uso por outra conta.";
-    return;
-  }
-
-  const updatedClient = upsertClient({
-    ...state.client,
-    name: data.name.trim(),
-    phone: data.phone.trim(),
-    email,
-    city: data.city.trim(),
-  });
-  saveClientSession(updatedClient);
-  message.textContent = "Dados atualizados com sucesso.";
 }
 
-function submitAdminLogin(event) {
+async function submitNewPassword(event) {
   event.preventDefault();
   const data = Object.fromEntries(new FormData(event.currentTarget).entries());
-  const admin = getAdmins().find((item) => item.email === data.email && item.password === data.password);
-  if (!admin) {
-    document.querySelector("#adminMessage").textContent = "Login administrativo inválido.";
-    return;
+  const password = String(data.password || "");
+  const message = document.querySelector("#newPasswordMessage");
+  if (password.length < 8) { message.textContent = "Use pelo menos 8 caracteres."; return; }
+  if (password !== String(data.passwordConfirm || "")) { message.textContent = "As senhas não coincidem."; return; }
+  const button = event.currentTarget.querySelector('button[type="submit"]');
+  button.disabled = true;
+  message.textContent = "Salvando nova senha...";
+  try {
+    const { error } = await authClient.auth.updateUser({ password });
+    if (error) throw error;
+    message.textContent = "Senha atualizada com sucesso.";
+    window.setTimeout(() => setRoute("minha-conta"), 500);
+  } catch {
+    message.textContent = "Não foi possível atualizar a senha. Solicite um novo link de recuperação.";
+  } finally {
+    button.disabled = false;
   }
-  state.admin = admin;
-  setRoute("admin");
 }
 
-function updateAppointmentStatus(event) {
-  const appointments = getAppointments().map((item) =>
-    item.id === event.currentTarget.dataset.status ? { ...item, status: event.currentTarget.value } : item,
-  );
-  localDataStore.saveAppointments(appointments);
+async function updateClientProfile(event) {
+  event.preventDefault();
+  const data = Object.fromEntries(new FormData(event.currentTarget).entries());
+  const message = document.querySelector("#profileMessage");
+
+  if (!data.name.trim() || !data.phone.trim()) {
+    message.textContent = "Revise nome e telefone.";
+    return;
+  }
+  const button = event.currentTarget.querySelector('button[type="submit"]');
+  button.disabled = true;
+  message.textContent = "Salvando...";
+  try {
+    const result = await apiRequest("update-profile", {
+      name: data.name.trim(),
+      phone: data.phone.trim(),
+      city: data.city.trim(),
+    });
+    state.client = result.profile;
+    message.textContent = "Dados atualizados com sucesso.";
+  } catch {
+    message.textContent = "Não foi possível atualizar agora.";
+  } finally {
+    button.disabled = false;
+  }
+}
+
+async function submitAdminLogin(event) {
+  event.preventDefault();
+  const data = Object.fromEntries(new FormData(event.currentTarget).entries());
+  const message = document.querySelector("#adminLoginMessage");
+  const button = event.currentTarget.querySelector('button[type="submit"]');
+  button.disabled = true;
+  message.textContent = "Enviando link administrativo...";
+  try {
+    await sendAccessLink(data.email, "admin", { shouldCreateUser: true });
+    message.textContent = "Link enviado. Abra o e-mail e clique para acessar o painel.";
+  } catch {
+    message.textContent = "Não foi possível enviar o link administrativo agora.";
+  } finally {
+    button.disabled = false;
+  }
+}
+
+async function updateAppointmentStatus(event) {
+  const select = event.currentTarget;
+  const previous = state.adminAppointments.find((item) => item.id === select.dataset.status)?.status;
+  select.disabled = true;
+  try {
+    await apiRequest("update-booking-status", { bookingId: select.dataset.status, status: select.value });
+    state.adminAppointments = state.adminAppointments.map((item) =>
+      item.id === select.dataset.status ? { ...item, status: select.value } : item,
+    );
+  } catch {
+    select.value = previous || "confirmed";
+    alert("Não foi possível atualizar o status do agendamento.");
+  } finally {
+    select.disabled = false;
+  }
 }
 
 function createService(event) {
@@ -1854,15 +1942,20 @@ function resetClientPassword(event) {
   alert("Senha redefinida com sucesso.");
 }
 
-function toggleClientVip(event) {
+async function toggleClientVip(event) {
   const clientId = event.currentTarget.dataset.toggleClientVip;
-  const client = getClients().find((item) => item.id === clientId);
+  const client = state.adminClients.find((item) => item.id === clientId);
   if (!client) return;
-  const updatedClient = upsertClient({ ...client, isVip: !client.isVip });
-  if (state.client?.id === clientId) {
-    saveClientSession(updatedClient);
+  event.currentTarget.disabled = true;
+  try {
+    await apiRequest("set-client-vip", { userId: clientId, isVip: !client.isVip });
+    state.adminClients = state.adminClients.map((item) => item.id === clientId ? { ...item, isVip: !item.isVip } : item);
+    if (state.client?.id === clientId) state.client = { ...state.client, isVip: !client.isVip };
+    render();
+  } catch {
+    event.currentTarget.disabled = false;
+    alert("Não foi possível atualizar o acesso VIP.");
   }
-  render();
 }
 
 function deleteClient(event) {
@@ -2010,9 +2103,13 @@ function fileToDataUrl(file) {
 seedData();
 window.addEventListener("hashchange", render);
 if ("serviceWorker" in navigator) {
-  navigator.serviceWorker.register("/service-worker.js").catch(() => {});
+  navigator.serviceWorker.getRegistrations()
+    .then((registrations) => Promise.all(registrations.map((registration) => registration.unregister())))
+    .finally(() => navigator.serviceWorker.register("/service-worker.js?v=20260817-auth-v2", { updateViaCache: "none" }))
+    .catch(() => {});
 }
 render();
+initializeAuth();
 bindAgeGate();
 applyAgeGateState();
 
