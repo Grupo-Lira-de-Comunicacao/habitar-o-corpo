@@ -46,6 +46,17 @@
         border-color: rgba(247, 242, 234, 0.48);
         background: transparent;
       }
+      .privacy-footer {
+        padding: 18px 20px 92px;
+        text-align: center;
+        font-size: 13px;
+      }
+      .privacy-footer a {
+        color: #1f3a33;
+        font-weight: 700;
+        text-decoration: underline;
+        text-underline-offset: 3px;
+      }
       @media (max-width: 780px) {
         .header-actions {
           flex: 0 0 auto;
@@ -78,6 +89,7 @@
           <a class="admin-only-nav hidden-field" href="#clientes" data-nav="clientes">Clientes</a>
           <a href="#vip-login">VIP</a>
           <a href="#admin-login">Admin</a>
+          <a href="#privacidade">Privacidade</a>
         </nav>
         <div class="header-actions">
           <a class="whatsapp-button" href="https://wa.me/5512988830247?text=Ol%C3%A1%2C%20Joelma!%20Gostaria%20de%20agendar%20um%20atendimento." target="_blank" rel="noreferrer">
@@ -106,6 +118,7 @@
         <a class="admin-only-nav hidden-field" href="#clientes" data-nav="clientes">Clientes</a>
         <a href="#vip-login" data-nav="vip-login">VIP</a>
       </nav>
+      <footer class="privacy-footer"><a href="#privacidade">Política de Privacidade e LGPD</a></footer>
     </div>
     <div class="splash-screen" id="splashScreen" aria-hidden="true">
       <div class="splash-mark">JS</div>
@@ -132,7 +145,7 @@
       </div>
     </section>
 
-    <script type="module" src="/app.js?v=20260818-auth-nav-v1"></script>
+    <script type="module" src="/app.js?v=20260818-production-v1"></script>
     <script type="module">
       import { createClient } from "https://esm.sh/@supabase/supabase-js@2.112.3";
 
