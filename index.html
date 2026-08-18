@@ -23,6 +23,42 @@
       rel="stylesheet"
     />
     <link rel="stylesheet" href="/styles.css" />
+    <style>
+      .header-actions {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        margin-left: auto;
+      }
+      .header-auth-button {
+        min-width: 88px;
+        min-height: 44px;
+        border: 1px solid rgba(201, 163, 78, 0.75);
+        border-radius: 8px;
+        padding: 0 16px;
+        color: #1f3a33;
+        font-weight: 800;
+        background: #c9a34e;
+        cursor: pointer;
+      }
+      .header-auth-button.is-logged-in {
+        color: #f7f2ea;
+        border-color: rgba(247, 242, 234, 0.48);
+        background: transparent;
+      }
+      @media (max-width: 780px) {
+        .header-actions {
+          flex: 0 0 auto;
+          gap: 0;
+        }
+        .header-auth-button {
+          min-width: 76px;
+          min-height: 40px;
+          padding: 0 12px;
+          font-size: 13px;
+        }
+      }
+    </style>
   </head>
   <body>
     <div class="app-frame">
@@ -43,9 +79,12 @@
           <a href="#vip-login">VIP</a>
           <a href="#admin-login">Admin</a>
         </nav>
-        <a class="whatsapp-button" href="https://wa.me/5512988830247?text=Ol%C3%A1%2C%20Joelma!%20Gostaria%20de%20agendar%20um%20atendimento." target="_blank" rel="noreferrer">
-          WhatsApp
-        </a>
+        <div class="header-actions">
+          <a class="whatsapp-button" href="https://wa.me/5512988830247?text=Ol%C3%A1%2C%20Joelma!%20Gostaria%20de%20agendar%20um%20atendimento." target="_blank" rel="noreferrer">
+            WhatsApp
+          </a>
+          <button class="header-auth-button" type="button" id="headerAuthButton" aria-label="Entrar na conta">Entrar</button>
+        </div>
       </header>
 
       <main id="app" tabindex="-1"></main>
@@ -93,6 +132,37 @@
       </div>
     </section>
 
-    <script type="module" src="/app.js?v=20260817-auth-v2"></script>
+    <script type="module" src="/app.js?v=20260818-auth-nav-v1"></script>
+    <script type="module">
+      import { createClient } from "https://esm.sh/@supabase/supabase-js@2.112.3";
+
+      const authButton = document.querySelector("#headerAuthButton");
+      const auth = createClient(
+        "https://onrmaojjvcbqbgwuhzwq.supabase.co",
+        "sb_publishable_2nB7J2RIftfVxU1wuOXLFQ_50-ksYBZ",
+        { auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: true } },
+      );
+
+      async function syncHeaderAuth() {
+        if (!authButton) return;
+        const { data } = await auth.auth.getSession();
+        const loggedIn = Boolean(data.session?.access_token);
+        authButton.textContent = loggedIn ? "Sair" : "Entrar";
+        authButton.setAttribute("aria-label", loggedIn ? "Sair da conta" : "Entrar na conta");
+        authButton.classList.toggle("is-logged-in", loggedIn);
+        authButton.onclick = async () => {
+          if (loggedIn) {
+            await auth.auth.signOut();
+            window.location.href = "/#home";
+            window.location.reload();
+            return;
+          }
+          window.location.hash = "entrar";
+        };
+      }
+
+      auth.auth.onAuthStateChange(() => window.setTimeout(syncHeaderAuth, 0));
+      syncHeaderAuth();
+    </script>
   </body>
 </html>
