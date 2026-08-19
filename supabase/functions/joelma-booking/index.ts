@@ -231,20 +231,34 @@ async function adminData(req: Request, origin: string | null) {
     supabase.from("joelma_vip_contents").select(VIP_COLUMNS).order("sort_order", { ascending: true }).order("created_at", { ascending: false }),
   ]);
   if (bookingsResult.error || profilesResult.error || servicesResult.error || vipResult.error) { console.error("admin_data_error", bookingsResult.error?.code ?? profilesResult.error?.code ?? servicesResult.error?.code ?? vipResult.error?.code); return json({ ok: false, error: "falha_ao_carregar_painel" }, 500, origin); }
-  return json({ ok: true, bookings: (bookingsResult.data ?? []).map(publicBooking), clients: (profilesResult.data ?? []).map(publicProfile), services: (servicesResult.data ?? []).map(publicService), vipContents: (vipResult.data ?? []).map(publicVipContent) }, 200, origin);
+  const adminFlags = await Promise.all(
+    (profilesResult.data ?? []).map((profile) => isAdminEmail(String(profile.email ?? ""))),
+  );
+  const clientProfiles = (profilesResult.data ?? []).filter(
+    (profile, index) =>
+      String(profile.email ?? "").toLowerCase() !== user.email.toLowerCase() &&
+      adminFlags[index] !== true,
+  );
+  return json({ ok: true, bookings: (bookingsResult.data ?? []).map(publicBooking), clients: clientProfiles.map(publicProfile), services: (servicesResult.data ?? []).map(publicService), vipContents: (vipResult.data ?? []).map(publicVipContent) }, 200, origin);
 }
 
 async function updateBookingStatus(payload: Record<string, unknown>, req: Request, origin: string | null) {
   const user = await authenticatedUser(req); if (!user?.email) return json({ ok: false, error: "nao_autenticado" }, 401, origin); if (!(await isAdminEmail(user.email))) return json({ ok: false, error: "acesso_negado" }, 403, origin);
-  const bookingId = cleanText(payload.bookingId, 36), status = cleanText(payload.status, 30), allowed = new Set(["confirmed", "completed", "canceled", "no_show"]);
-  if (!validUuid(bookingId) || !allowed.has(status)) return json({ ok: false, error: "dados_invalidos" }, 400, origin);
-  const { error } = await supabase.from("joelma_bookings").update({ status, updated_at: new Date().toISOString() }).eq("id", bookingId); if (error) return json({ ok: false, error: "falha_ao_atualizar_agendamento" }, 500, origin); return json({ ok: true }, 200, origin);
+  const bookingId = cleanText(payload.bookingId, 36), status = cleanText(payload.status, 30), allowed = new Set(["confirmed", "completed", "canceled", "no_show"]); if (!validUuid(bookingId) || !allowed.has(status)) return json({ ok: false, error: "dados_invalidos" }, 400, origin); const { error } = await supabase.from("joelma_bookings").update({ status, updated_at: new Date().toISOString() }).eq("id", bookingId); if (error) return json({ ok: false, error: "falha_ao_atualizar_agendamento" }, 500, origin); return json({ ok: true }, 200, origin);
 }
 
 async function setClientVip(payload: Record<string, unknown>, req: Request, origin: string | null) {
-  const user = await authenticatedUser(req); if (!user?.email) return json({ ok: false, error: "nao_autenticado" }, 401, origin); if (!(await isAdminEmail(user.email))) return json({ ok: false, error: "acesso_negado" }, 403, origin);
-  const userId = cleanText(payload.userId, 36); if (!validUuid(userId) || typeof payload.isVip !== "boolean") return json({ ok: false, error: "dados_invalidos" }, 400, origin);
-  const { error } = await supabase.from("joelma_profiles").update({ is_vip: payload.isVip, updated_at: new Date().toISOString() }).eq("user_id", userId); if (error) return json({ ok: false, error: "falha_ao_atualizar_cliente" }, 500, origin); return json({ ok: true }, 200, origin);
+  const user = await authenticatedUser(req);
+  if (!user?.email) return json({ ok: false, error: "nao_autenticado" }, 401, origin);
+  if (!(await isAdminEmail(user.email))) return json({ ok: false, error: "acesso_negado" }, 403, origin);
+  const userId = cleanText(payload.userId, 36);
+  if (!validUuid(userId) || typeof payload.isVip !== "boolean") return json({ ok: false, error: "dados_invalidos" }, 400, origin);
+  const { data: targetProfile, error: targetError } = await supabase.from("joelma_profiles").select("email").eq("user_id", userId).maybeSingle();
+  if (targetError || !targetProfile) return json({ ok: false, error: "cliente_nao_encontrado" }, 404, origin);
+  if (await isAdminEmail(String(targetProfile.email ?? ""))) return json({ ok: false, error: "conta_administrativa" }, 403, origin);
+  const { error } = await supabase.from("joelma_profiles").update({ is_vip: payload.isVip, updated_at: new Date().toISOString() }).eq("user_id", userId);
+  if (error) return json({ ok: false, error: "falha_ao_atualizar_cliente" }, 500, origin);
+  return json({ ok: true }, 200, origin);
 }
 
 async function upsertService(payload: Record<string, unknown>, req: Request, origin: string | null) {

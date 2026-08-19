@@ -65,6 +65,7 @@ for (const legacyPath of forbiddenLegacyPaths) {
 const app = read('public/app.js');
 const index = read('public/index.html');
 const serviceWorker = read('public/service-worker.js');
+const bookingBackend = read('supabase/functions/joelma-booking/index.ts');
 const manifest = JSON.parse(read('public/manifest.json'));
 
 assert(manifest.name === 'Habitar o Corpo', 'Manifesto PWA com nome incorreto');
@@ -73,6 +74,12 @@ assert(manifest.theme_color === '#1F3A33', 'Manifesto PWA com cor de tema incorr
 assert(index.includes('<title>Habitar o Corpo | Joelma Souza</title>'), 'Título oficial ausente');
 assert(index.includes('/app.js'), 'app.js não está carregado pelo index');
 assert(!index.includes('booking-automation.js'), 'Index ainda carrega automação legada');
+
+const bottomNav = index.match(/<nav class="bottom-nav"[\s\S]*?<\/nav>/)?.[0] || '';
+assert(bottomNav.includes('href="#admin" data-nav="admin">Admin</a>'), 'Menu móvel não expõe o painel Admin para a administradora');
+assert(!bottomNav.includes('href="#clientes"'), 'Menu móvel não deve expor Clientes como atalho administrativo separado');
+assert(bookingBackend.includes('const clientProfiles = (profilesResult.data ?? []).filter'), 'Backend administrativo ainda não separa administradores da lista de clientes');
+assert(bookingBackend.includes('String(profile.email ?? "").toLowerCase() !== user.email.toLowerCase()'), 'Backend administrativo ainda pode retornar o próprio perfil da administradora como cliente');
 
 assert(app.includes('/functions/v1/joelma-booking'), 'Frontend não está ligado ao backend de agendamento');
 assert(app.includes('/functions/v1/joelma-auth'), 'Frontend não está ligado ao backend de autenticação');
