@@ -74,6 +74,11 @@ assert(index.includes('<title>Habitar o Corpo | Joelma Souza</title>'), 'Título
 assert(index.includes('/app.js'), 'app.js não está carregado pelo index');
 assert(!index.includes('booking-automation.js'), 'Index ainda carrega automação legada');
 
+const bottomNav = index.match(/<nav class="bottom-nav"[\s\S]*?<\/nav>/)?.[0] || '';
+assert(bottomNav.includes('href="#admin" data-nav="admin">Admin</a>'), 'Menu móvel não expõe o painel Admin para a administradora');
+assert(!bottomNav.includes('href="#clientes"'), 'Menu móvel não deve expor Clientes como atalho administrativo separado');
+assert(app.includes('normalizeEmail(client.email) !== normalizeEmail(state.admin?.email)'), 'Lista administrativa ainda inclui o próprio perfil da administradora como cliente');
+
 assert(app.includes('/functions/v1/joelma-booking'), 'Frontend não está ligado ao backend de agendamento');
 assert(app.includes('/functions/v1/joelma-auth'), 'Frontend não está ligado ao backend de autenticação');
 assert(app.includes('Authorization: `Bearer ${state.authSession.access_token}`'), 'Agendamento autenticado não está preservado');
