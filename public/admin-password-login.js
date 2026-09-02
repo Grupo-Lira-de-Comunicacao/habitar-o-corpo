@@ -20,7 +20,7 @@ function loadServiceEditor() {
   if (!document.querySelector('script[data-service-editor]')) {
     const script = document.createElement("script");
     script.type = "module";
-    script.src = "/admin-service-editor.js?v=20260901-v1";
+    script.src = "/admin-service-editor.js?v=20260901-price-parser-v2";
     script.dataset.serviceEditor = "true";
     document.body.appendChild(script);
   }
