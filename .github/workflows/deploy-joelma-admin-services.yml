@@ -1,6 +1,11 @@
 name: Deploy Joelma Admin Services
 
 on:
+  push:
+    branches: [main]
+    paths:
+      - "supabase/functions/joelma-admin-services/**"
+      - ".github/workflows/deploy-joelma-admin-services.yml"
   workflow_dispatch:
 
 permissions:
