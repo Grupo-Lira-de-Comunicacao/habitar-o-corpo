@@ -9,6 +9,23 @@ const auth = createClient(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY, {
   auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: true },
 });
 
+function loadServiceEditor() {
+  if (!document.querySelector('link[data-service-editor]')) {
+    const link = document.createElement("link");
+    link.rel = "stylesheet";
+    link.href = "/admin-service-editor.css?v=20260901-v1";
+    link.dataset.serviceEditor = "true";
+    document.head.appendChild(link);
+  }
+  if (!document.querySelector('script[data-service-editor]')) {
+    const script = document.createElement("script");
+    script.type = "module";
+    script.src = "/admin-service-editor.js?v=20260901-v1";
+    script.dataset.serviceEditor = "true";
+    document.body.appendChild(script);
+  }
+}
+
 function normalizeEmail(value) {
   return String(value || "").trim().toLowerCase();
 }
@@ -97,6 +114,7 @@ function patchAdminLogin() {
   });
 }
 
+loadServiceEditor();
 window.addEventListener("hashchange", () => window.setTimeout(patchAdminLogin, 0));
 window.addEventListener("load", () => window.setTimeout(patchAdminLogin, 500));
 
