@@ -26,6 +26,10 @@ function centsFromPrice(value) {
 function minutesFromDuration(value) {
   const text = String(value ?? "").toLowerCase().trim();
   if (/^\d+$/.test(text)) return Number(text);
+
+  const compactHour = text.match(/^(\d+)\s*h\s*(\d{1,2})$/);
+  if (compactHour) return Number(compactHour[1]) * 60 + Number(compactHour[2]);
+
   const hour = text.match(/(\d+)\s*h/);
   const minute = text.match(/(\d+)\s*(?:min|m)/);
   return (hour ? Number(hour[1]) * 60 : 0) + (minute ? Number(minute[1]) : 0);
