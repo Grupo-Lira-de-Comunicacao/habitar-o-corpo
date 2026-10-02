@@ -839,6 +839,15 @@ function renderHome() {
           <button class="light-btn" data-route="minha-conta">📅 ${accountLabel}</button>
           <a class="light-btn clean-button-link" href="${waLink("Olá, Joelma! Gostaria de falar sobre um atendimento.")}" target="_blank" rel="noreferrer">💬 WhatsApp</a>
         </div>
+
+        <button class="vip-home-card" data-route="vip-login" type="button">
+          <span class="vip-home-icon" aria-hidden="true">🔒</span>
+          <span class="vip-home-copy">
+            <strong>Área VIP 18+</strong>
+            <small>Conteúdos adultos exclusivos para clientes autorizados</small>
+          </span>
+          <b aria-hidden="true">→</b>
+        </button>
       </div>
 
       <div class="clean-home-links" aria-label="Links úteis">
@@ -1153,9 +1162,9 @@ function renderVipLogin() {
     return `
       <section class="auth-layout">
         <div class="form-shell auth-card">
-          <p class="eyebrow">Área VIP</p>
-          <h1>Acesso ainda não liberado</h1>
-          <p>Seu acesso VIP ainda não está liberado. Fale com a Joelma pelo WhatsApp.</p>
+          <p class="eyebrow">Área VIP 18+</p>
+          <h1>Conteúdos adultos exclusivos</h1>
+          <p>Seu acesso VIP ainda não está liberado. Esta área é reservada a clientes maiores de 18 anos previamente autorizados.</p>
           <a class="gold-btn link-btn" href="${waLink("Olá, Joelma! Gostaria de liberar meu acesso VIP.")}" target="_blank" rel="noreferrer">Falar no WhatsApp</a>
           <button class="ghost-btn" data-route="minha-conta">Voltar para Minha Conta</button>
         </div>
@@ -1165,8 +1174,8 @@ function renderVipLogin() {
   return `
     <section class="auth-layout">
       <div class="form-shell auth-card">
-        <p class="eyebrow">Área VIP</p>
-        <h1>Entre pela sua conta</h1>
+        <p class="eyebrow">Área VIP 18+</p>
+        <h1>Conteúdos adultos exclusivos</h1>
         <p>${VIP_NOTICE}</p>
         <p>O acesso VIP usa a mesma conta e senha do aplicativo.</p>
         <button class="gold-btn" type="button" data-route="entrar">Entrar na minha conta</button>
@@ -1181,8 +1190,8 @@ function renderVipContent() {
   const selectedContent = state.params.id ? contents.find((content) => content.id === state.params.id) : null;
   return `
     <section class="page-title">
-      <p class="eyebrow">VIP</p>
-      <h1>Fotos e vídeos exclusivos</h1>
+      <p class="eyebrow">Área VIP 18+</p>
+      <h1>Conteúdos adultos exclusivos</h1>
       <p>${VIP_NOTICE}</p>
       <button class="ghost-btn" data-route="minha-conta">Minha Conta</button>
     </section>
