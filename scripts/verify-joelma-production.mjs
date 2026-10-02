@@ -81,7 +81,7 @@ assert(bottomNav.includes('href="#agendar" data-nav="agendar">Agendar</a>'), 'Me
 assert(bottomNav.includes('href="#minha-conta" data-nav="minha-conta">Minha Agenda</a>'), 'Menu móvel não expõe Minha Agenda');
 assert(bottomNav.includes('href="#admin" data-nav="admin">Admin</a>'), 'Menu móvel não preserva o painel Admin para a administradora');
 assert(!bottomNav.includes('href="#servicos"'), 'Menu móvel clean não deve duplicar Serviços do site institucional');
-assert(!bottomNav.includes('href="#vip-login"'), 'Menu móvel clean não deve expor VIP como navegação principal');
+assert(bottomNav.includes('href="#vip-login" data-nav="vip-login">VIP 18+</a>'), 'Menu móvel deve expor a Área VIP 18+');
 assert(!bottomNav.includes('href="#clientes"'), 'Menu móvel não deve expor Clientes como atalho administrativo separado');
 assert(bookingBackend.includes('const clientProfiles = (profilesResult.data ?? []).filter'), 'Backend administrativo ainda não separa administradores da lista de clientes');
 assert(bookingBackend.includes('String(profile.email ?? "").toLowerCase() !== user.email.toLowerCase()'), 'Backend administrativo ainda pode retornar o próprio perfil da administradora como cliente');
