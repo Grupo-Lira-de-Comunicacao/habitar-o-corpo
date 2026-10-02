@@ -75,8 +75,13 @@ assert(index.includes('<title>Habitar o Corpo | Joelma Souza</title>'), 'Título
 assert(index.includes('/app.js'), 'app.js não está carregado pelo index');
 assert(!index.includes('booking-automation.js'), 'Index ainda carrega automação legada');
 
-const bottomNav = index.match(/<nav class="bottom-nav"[\s\S]*?<\/nav>/)?.[0] || '';
-assert(bottomNav.includes('href="#admin" data-nav="admin">Admin</a>'), 'Menu móvel não expõe o painel Admin para a administradora');
+const bottomNav = index.match(/<nav class="bottom-nav[^"]*"[^>]*>[\s\S]*?<\/nav>/)?.[0] || '';
+assert(bottomNav.includes('href="#home" data-nav="home">Início</a>'), 'Menu móvel não expõe Início');
+assert(bottomNav.includes('href="#agendar" data-nav="agendar">Agendar</a>'), 'Menu móvel não expõe Agendar');
+assert(bottomNav.includes('href="#minha-conta" data-nav="minha-conta">Minha Agenda</a>'), 'Menu móvel não expõe Minha Agenda');
+assert(bottomNav.includes('href="#admin" data-nav="admin">Admin</a>'), 'Menu móvel não preserva o painel Admin para a administradora');
+assert(!bottomNav.includes('href="#servicos"'), 'Menu móvel clean não deve duplicar Serviços do site institucional');
+assert(!bottomNav.includes('href="#vip-login"'), 'Menu móvel clean não deve expor VIP como navegação principal');
 assert(!bottomNav.includes('href="#clientes"'), 'Menu móvel não deve expor Clientes como atalho administrativo separado');
 assert(bookingBackend.includes('const clientProfiles = (profilesResult.data ?? []).filter'), 'Backend administrativo ainda não separa administradores da lista de clientes');
 assert(bookingBackend.includes('String(profile.email ?? "").toLowerCase() !== user.email.toLowerCase()'), 'Backend administrativo ainda pode retornar o próprio perfil da administradora como cliente');
