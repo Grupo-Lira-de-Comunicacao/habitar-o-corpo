@@ -13,6 +13,9 @@ const APP_CONFIG = {
   defaultDuration: "1h30",
   defaultPrice: "R$ 300,00",
   domain: "app.joelmasouzaoficial.com.br",
+  siteUrl: "https://joelmasouzaoficial.com.br",
+  mapsUrl: "https://maps.app.goo.gl/kZRrM4YgPPcmjQN66",
+  googleReviewUrl: "https://search.google.com/local/writereview?placeid=ChIJf519z-QrK0gRXX9mgQMTbmk",
 };
 
 const AGE_VERIFICATION_KEY = "habitar_age_verified";
@@ -821,59 +824,36 @@ function cardService(service) {
 }
 
 function renderHome() {
-  const services = getServices().slice(0, 3);
+  const firstName = state.client?.name ? escapeHtml(String(state.client.name).trim().split(/\s+/)[0]) : "";
+  const accountLabel = state.client ? "Meus agendamentos" : "Minha agenda";
   return `
-    <section class="hero">
-      <div class="hero-copy">
-        <p class="script">${APP_CONFIG.phrase}</p>
-        <h1>${APP_CONFIG.appName}</h1>
-        <p>
-          ${APP_CONFIG.brand}. Atendimentos com hora marcada em um espaço reservado para
-          presença, consciência corporal, cuidado e reconexão consigo.
-        </p>
-        <div class="hero-actions">
-          <button class="gold-btn" data-route="agendar">Agendar atendimento</button>
-          <button class="light-btn" data-route="servicos">Conhecer serviços</button>
-          <button class="light-btn" data-route="vip-login">Área VIP</button>
-          <a class="outline-link" href="${waLink("Olá, Joelma! Gostaria de agendar um atendimento.")}" target="_blank" rel="noreferrer">Falar no WhatsApp</a>
+    <section class="clean-home">
+      <div class="clean-home-card">
+        <p class="eyebrow">Habitar o Corpo 🌿</p>
+        <h1>${firstName ? `Olá, ${firstName}` : "Olá, seja bem-vindo(a)"}</h1>
+        <p class="clean-home-lead">Como posso cuidar de você hoje?</p>
+
+        <button class="gold-btn clean-primary-action" data-route="agendar">🌿 Agendar atendimento</button>
+
+        <div class="clean-home-actions">
+          <button class="light-btn" data-route="minha-conta">📅 ${accountLabel}</button>
+          <a class="light-btn clean-button-link" href="${waLink("Olá, Joelma! Gostaria de falar sobre um atendimento.")}" target="_blank" rel="noreferrer">💬 WhatsApp</a>
         </div>
       </div>
-    </section>
 
-    <section class="champagne-section two-col">
-      <div>
-        <p class="eyebrow">Sobre a profissional</p>
-        <h2>Acolhimento, presença e bem-estar corporal</h2>
-      </div>
-      <p>
-        O conceito Habitar o Corpo nasce como um convite para voltar para si, com práticas
-        integrativas, massagem, escuta cuidadosa e atendimentos individuais em ambiente reservado.
-      </p>
-    </section>
-
-    <section class="content-section">
-      <div class="section-heading">
-        <p class="eyebrow">Principais serviços</p>
-        <h2>Escolha o cuidado ideal para o seu momento</h2>
-      </div>
-      <div class="card-grid">${services.map(cardService).join("")}</div>
-    </section>
-
-    <section class="cta-band">
-      <p class="script">Habitar o corpo é voltar para si.</p>
-      <h2>Agende seu atendimento com tranquilidade</h2>
-      <button class="gold-btn" data-route="agendar">Começar agendamento</button>
-    </section>
-
-    <section class="contact-section">
-      <div>
-        <p class="eyebrow">Contato e atendimento</p>
-        <h2>Espaço Joelma Souza</h2>
-        <p>${APP_CONFIG.address}</p>
-        <p>Pix: <strong>${APP_CONFIG.pixKey}</strong></p>
-      </div>
-      <div class="hours-grid">
-        ${businessHours.map(([day, hours]) => `<span>${day}</span><strong>${hours}</strong>`).join("")}
+      <div class="clean-home-links" aria-label="Links úteis">
+        <a href="${APP_CONFIG.siteUrl}" target="_blank" rel="noreferrer">
+          <span><strong>Conheça o Habitar o Corpo</strong><small>Serviços, cursos, palestras e informações completas</small></span>
+          <b aria-hidden="true">→</b>
+        </a>
+        <a href="${APP_CONFIG.mapsUrl}" target="_blank" rel="noreferrer">
+          <span><strong>📍 Como chegar</strong><small>Abrir localização no Google Maps</small></span>
+          <b aria-hidden="true">→</b>
+        </a>
+        <a href="${APP_CONFIG.googleReviewUrl}" target="_blank" rel="noreferrer">
+          <span><strong>⭐ Avaliar no Google</strong><small>Compartilhe como foi sua experiência</small></span>
+          <b aria-hidden="true">→</b>
+        </a>
       </div>
     </section>
   `;
@@ -956,42 +936,49 @@ function renderBooking() {
 function renderAccount() {
   if (!state.client) {
     return `
-      <section class="account-hero">
+      <section class="account-hero clean-account-entry">
         <div>
-          <p class="eyebrow">Minha Conta</p>
-          <h1>Entre ou crie sua conta segura</h1>
-          <p>Entre com seu WhatsApp e senha para acompanhar agendamentos e a liberação VIP.</p>
+          <p class="eyebrow">Minha Agenda</p>
+          <h1>Acesse seus agendamentos</h1>
+          <p>Entre ou crie sua conta para marcar horários e acompanhar seus atendimentos em um só lugar.</p>
         </div>
         <div class="account-actions">
           <button class="gold-btn" data-route="entrar">Entrar</button>
           <button class="light-btn" data-route="criar-conta">Criar conta</button>
         </div>
       </section>
-      <section class="champagne-section two-col">
-        <div>
-          <p class="script">Habitar o corpo é voltar para si.</p>
-          <h2>Um espaço reservado para sua jornada</h2>
-        </div>
-        <p>Com a conta criada, seus próximos agendamentos ficam organizados e a liberação VIP pode ser ativada pela administração.</p>
-      </section>
     `;
   }
 
   const appointments = state.accountAppointments;
+  const vipAction = state.client.isVip
+    ? '<button class="ghost-btn" data-route="vip-login">Área VIP</button>'
+    : "";
+
   return `
-    <section class="page-title">
-      <p class="eyebrow">Minha Conta</p>
+    <section class="page-title clean-account-title">
+      <p class="eyebrow">Minha Agenda</p>
       <h1>Olá, ${escapeHtml(state.client.name || "cliente")}</h1>
-      <p>${state.client.isVip ? "Seu acesso VIP está liberado." : "Seu acesso VIP ainda não está liberado."}</p>
+      <p>Consulte seus horários ou faça um novo agendamento.</p>
       <div class="hero-actions">
-        <button class="gold-btn" data-route="agendar">Novo agendamento</button>
-        <button class="ghost-btn" data-route="vip-login">Área VIP</button>
-        <button class="danger-btn" id="clientLogout">Sair</button>
+        <button class="gold-btn" data-route="agendar">🌿 Novo agendamento</button>
+        ${vipAction}
       </div>
     </section>
-    <section class="account-grid">
+
+    <section class="clean-agenda-card">
+      <div class="section-heading">
+        <p class="eyebrow">Meus agendamentos</p>
+        <h2>Próximos horários e histórico</h2>
+      </div>
+      <div class="appointment-stack">
+        ${appointments.length ? appointments.map(clientAppointmentCard).join("") : '<p class="clean-empty-state">Você ainda não possui agendamentos nesta conta.</p>'}
+      </div>
+    </section>
+
+    <details class="clean-account-settings">
+      <summary>Meus dados e configurações</summary>
       <form class="form-shell account-form" id="clientProfileForm">
-        <p class="eyebrow">Meus dados</p>
         <label>Nome completo <input name="name" required value="${escapeHtml(state.client.name || "")}" /></label>
         <label>Telefone / WhatsApp <input name="phone" required value="${escapeHtml(state.client.phone || "")}" /></label>
         <label>E-mail <input name="email" type="email" readonly value="${escapeHtml(state.client.email || "")}" /></label>
@@ -999,14 +986,8 @@ function renderAccount() {
         <button class="gold-btn" type="submit">Salvar dados</button>
         <p class="form-message" id="profileMessage"></p>
       </form>
-      <section class="account-card">
-        <p class="eyebrow">Meus agendamentos</p>
-        <h2>Acompanhamento</h2>
-        <div class="appointment-stack">
-          ${appointments.length ? appointments.map(clientAppointmentCard).join("") : "<p>Nenhum agendamento encontrado para sua conta.</p>"}
-        </div>
-      </section>
-    </section>
+      <button class="danger-btn clean-logout" id="clientLogout">Sair da conta</button>
+    </details>
   `;
 }
 
